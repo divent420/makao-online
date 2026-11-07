@@ -525,13 +525,13 @@ function applyShopEffects() {
   const items=shopData?.items||[];
   const effectFor=(category)=>items.find(i=>i.id===equipped[category])?.effect;
   const back=effectFor('card_back');
-  const backPatterns={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)'};
+  const backPatterns={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)',prism:'linear-gradient(125deg,#f06c9b,#f6c85f,#5bd6b1,#6588ed,#a86ce8)',obsidian:'repeating-linear-gradient(135deg,#080b12 0 8px,#323b4a 8px 10px,#111722 10px 18px)',koi:'radial-gradient(ellipse at 30% 25%,#f6eee0 0 8%,transparent 9%),radial-gradient(ellipse at 70% 70%,#e47a39 0 10%,transparent 11%),linear-gradient(135deg,#082f36,#14525b)'};
   if(back && backPatterns[back] && !freeAppearance.card_back) root.style.setProperty('--back-pattern',backPatterns[back]);
   const felt=effectFor('table_theme');
-  const felts={sakura:['#9d526f','#512b4b'],aurora:['#176b70','#123344']};
+  const felts={sakura:['#9d526f','#512b4b'],aurora:['#176b70','#123344'],volcano:['#9b3b27','#3c171c'],amethyst:['#65448e','#241b3e']};
   if(felt && felts[felt] && !freeAppearance.table_theme) { const colors=felts[felt]; root.style.setProperty('--felt',colors[0]); root.style.setProperty('--felt2',colors[1]); root.style.setProperty('--table-pattern',`radial-gradient(ellipse at center,${colors[0]},${colors[1]})`); }
   const frame=effectFor('avatar_frame');
-  const rings={flame:'#ff784e',ice:'#8bdcff',crown:'#f4cf68'};
+  const rings={flame:'#ff784e',ice:'#8bdcff',crown:'#f4cf68',neon:'#b66cff',emerald:'#43d69a'};
   root.style.setProperty('--avatar-ring',rings[frame]||'transparent');
 }
 applyTheme();
@@ -868,10 +868,12 @@ function shopScreen() {
     {id:'free-felt-midnight',name:'Midnight',icon:'🌑',free:true,selected:tableTheme.felt==='midnight',style:'background:linear-gradient(135deg,#343b46,#151c28)',apply:()=>{tableTheme.felt='midnight';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
   ];
   function appearanceCard(item,category) {
+    const backPreview={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)',prism:'linear-gradient(125deg,#f06c9b,#f6c85f,#5bd6b1,#6588ed,#a86ce8)',obsidian:'repeating-linear-gradient(135deg,#080b12 0 8px,#323b4a 8px 10px,#111722 10px 18px)',koi:'radial-gradient(ellipse at 30% 25%,#f6eee0 0 8%,transparent 9%),radial-gradient(ellipse at 70% 70%,#e47a39 0 10%,transparent 11%),linear-gradient(135deg,#082f36,#14525b)'};
+    const feltPreview={sakura:'linear-gradient(135deg,#9d526f,#512b4b)',aurora:'linear-gradient(135deg,#176b70,#123344)',volcano:'linear-gradient(135deg,#9b3b27,#3c171c)',amethyst:'linear-gradient(135deg,#65448e,#241b3e)'};
     const visual = category==='card_back'
-      ? h('div',{class:'shop-visual shop-visual-card '+(item.free?'':'premium'),style:item.style||''},item.free?'':item.icon)
+      ? h('div',{class:'shop-visual shop-visual-card '+(item.free?'':'premium'),style:item.style||(!item.free?('background:'+backPreview[item.effect]+';'):'')},item.free?'':item.icon)
       : category==='table_theme'
-        ? h('div',{class:'shop-visual shop-visual-felt',style:item.style||''},'')
+        ? h('div',{class:'shop-visual shop-visual-felt',style:item.style||(!item.free?('background:'+feltPreview[item.effect]+';'):'')},'')
         : h('div',{class:'shop-visual shop-visual-frame'},h('span',{},'🂡'),h('i',{},item.icon));
     const selected=item.free?item.selected:item.equipped;
     const action=item.free?item.apply:async()=>{

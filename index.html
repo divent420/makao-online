@@ -360,6 +360,16 @@ function lobbyScreen() {
     h('div',{class:'screen-title'},'Find your table'),
     h('div', { class: 'grid' },
       h('div', { class: 'panel' },
+        h('h2', {}, 'Play now'),
+        h('div', { class: 'row', style: 'margin-bottom:12px' },
+          S.matchmaking && S.matchmaking.waiting
+            ? h('button', { class: 'warn', onclick: () => act({ t: 'cancelMatch' }) }, 'Cancel matchmaking')
+            : h('button', { onclick: () => act({ t: 'quickMatch' }) }, '⚡ Quick Match'),
+          h('span', { class: 'muted' }, S.matchmaking && S.matchmaking.waiting ? 'Searching for an opponent…' : 'Find a ranked opponent automatically')),
+        h('div', { class: 'row', style: 'margin-bottom:18px' },
+          h('select', { id: 'aiCount' }, [1, 2, 3].map(n => h('option', { value: n, selected: n === 2 }, n + ' AI opponent' + (n === 1 ? '' : 's')))),
+          h('select', { id: 'aiDifficulty' }, ['easy', 'normal', 'hard'].map(d => h('option', { value: d, selected: d === 'normal' }, d[0].toUpperCase() + d.slice(1)))),
+          h('button', { class: 'alt', onclick: () => act({ t: 'playAI', count: Number($('aiCount').value), difficulty: $('aiDifficulty').value }) }, '🤖 Play vs AI')),
         h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Open tables'),h('span',{class:'muted'},S.lobbies.length+' available')),
         list,
         h('h2', { style: 'margin-top:18px' }, 'Create a table'),
@@ -428,7 +438,7 @@ function roomScreen() {
     h('div', { class: 'panel' },
       h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
       h('div', { class: 'row', style: 'margin-top:12px' },
-        isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…'),
+        r.aiGame && r.result ? h('button', { onclick: () => act({ t: 'rematchAI' }) }, '🤖 Play again') : (isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…')),
         h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
       rulesPanel(r, isHost)),
     h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r)))];

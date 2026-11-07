@@ -8,6 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 const M = require('./makao');
+const AI = require('./ai');
 
 const PORT = process.env.PORT || 3000;
 const TURN_MS = Number(process.env.TURN_MS) || 60000;          // time to act before auto-play
@@ -113,6 +114,7 @@ const rooms = new Map();        // roomId -> room
 const userRoom = new Map();     // userId -> roomId
 const online = new Map();       // userId -> { res }
 const dcTimers = new Map();     // userId -> timeout
+const matchmakingQueue = new Map(); // userId -> queuedAt
 const uname = (id) => { const u = q.byId.get(id); return u ? u.username : '?'; };
 const str = (s, n) => String(s == null ? '' : s).slice(0, n);
 
@@ -123,7 +125,7 @@ function persistRoom(room) {
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
     members: room.members, game: room.game, chat: room.chat,
-    result: room.result, rules: room.rules,
+    result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
   };
   q.saveRoom.run(room.id, JSON.stringify(snapshot), Date.now());
 }
@@ -133,8 +135,8 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game,
-    rules: r.rules, ranked: M.isRanked(r.rules),
+    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game, aiGame: !!r.aiGame,
+    rules: r.rules, ranked: !r.aiGame && M.isRanked(r.rules),
     members: r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id) }; }),
     chat: r.chat.slice(-40), result: r.result,
   };
@@ -149,6 +151,7 @@ function stateFor(uid) {
       ranked: M.isRanked(r.rules),
     })),
     room: room ? roomView(room) : null,
+    matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
     game: room && room.game ? M.view(room.game, uid) : null,
   };
 }
@@ -159,19 +162,37 @@ function pushAll() {
 }
 
 // ---------- game flow ----------
+function runBotTurn(room) {
+  if (!room.game || room.game.winner != null) return;
+  const current = room.game.players[room.game.turn];
+  if (!current || current.id >= 0) return;
+  const action = AI.decide(room.game, current.id, room.aiDifficulty || 'normal');
+  if (!action) return;
+  let result;
+  if (action.type === 'play') result = M.play(room.game, current.id, action.cards, action);
+  else result = M[action.type](room.game, current.id);
+  if (result && !result.error) afterAction(room);
+  else { // Fail safe: avoid a bot holding the table forever if an edge case occurs.
+    const fallback = M.autoPlay(room.game);
+    if (!fallback.error) afterAction(room);
+  }
+}
+
 function armTimer(room, restoring = false) {
   clearTimeout(room.timer);
   if (!room.game || room.game.winner != null) return;
+  const current = room.game.players[room.game.turn];
+  const isBot = current && current.id < 0;
   const now = Date.now();
   const savedDeadline = Number(room.game.deadline);
-  const ms = restoring && Number.isFinite(savedDeadline)
+  const ms = isBot ? 900 : (restoring && Number.isFinite(savedDeadline)
     ? Math.max(0, savedDeadline - now)
-    : room.rules.turnSeconds * 1000;
+    : room.rules.turnSeconds * 1000);
   room.game.deadline = now + ms;
   room.timer = setTimeout(() => {
     if (!room.game) return;
-    M.autoPlay(room.game);
-    afterAction(room);
+    if (isBot) runBotTurn(room);
+    else { M.autoPlay(room.game); afterAction(room); }
   }, ms);
   persistRoom(room);
 }
@@ -188,7 +209,7 @@ function restoreRooms() {
         throw new Error('Invalid room snapshot');
       }
       if (saved.game && (!Array.isArray(saved.game.players) ||
-          saved.game.players.some((p) => !q.byId.get(p.id)))) {
+          saved.game.players.some((p) => p.id > 0 && !q.byId.get(p.id)))) {
         throw new Error('Invalid saved game');
       }
       const room = {
@@ -196,7 +217,7 @@ function restoreRooms() {
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
         members: saved.members, game: saved.game || null,
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
-        result: saved.result || null, timer: null,
+        result: saved.result || null, timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
         rules: M.sanitizeRules(saved.rules),
       };
       if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
@@ -218,23 +239,24 @@ function restoreRooms() {
 function finishGame(room) {
   clearTimeout(room.timer);
   const st = room.game;
-  const rows = st.players.map((p) => q.byId.get(p.id));
-  // Games with changed rules are casual: recorded, but ratings and stats stay untouched.
-  const ranked = M.isRanked(room.rules);
-  const deltas = M.elo(rows.map((u) => u.rating), st.winner);
+  const players = st.players;
+  const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id));
+  // AI matches are always casual: bots never affect competitive ratings or player stats.
+  const ranked = !room.aiGame && M.isRanked(room.rules);
+  const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
   const result = { id: Date.now(), ranked, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
   db.exec('BEGIN');
   try {
-    rows.forEach((u, i) => {
-      const won = i === st.winner;
+    humanRows.forEach((u, i) => {
+      const player = players.find(p => p.id === u.id);
+      const won = player && players.indexOf(player) === st.winner;
       if (ranked) {
         const nr = Math.max(100, u.rating + deltas[i]);
         q.upd.run(nr, won ? 1 : 0, u.id);
         result.rows.push({ username: u.username, delta: nr - u.rating, rating: nr, won });
-      } else {
-        result.rows.push({ username: u.username, delta: 0, rating: u.rating, won });
-      }
+      } else result.rows.push({ username: u.username, delta: 0, rating: u.rating, won });
     });
+    for (const bot of players.filter(p => p.id < 0)) result.rows.push({ username: bot.name, delta: 0, rating: 0, won: players.indexOf(bot) === st.winner });
     q.insGame.run(Date.now(), result.winnerId, JSON.stringify({ ranked, rules: room.rules, rows: result.rows }));
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
@@ -274,6 +296,64 @@ function handleAct(user, m) {
   const uid = user.id;
   const room = rooms.get(userRoom.get(uid));
   switch (m.t) {
+    case 'quickMatch': {
+      if (room) return { error: 'Leave your current table first' };
+      if (matchmakingQueue.has(uid)) return { ok: true, waiting: true };
+      matchmakingQueue.set(uid, Date.now());
+      // Remove abandoned queue entries, then widen the Elo window as players wait.
+      for (const [id, joinedAt] of matchmakingQueue) if (Date.now() - joinedAt > 120000 || !online.has(id)) matchmakingQueue.delete(id);
+      const myRating = q.byId.get(uid).rating;
+      const candidates = [...matchmakingQueue.entries()].filter(([id, joinedAt]) => {
+        if (id === uid || userRoom.has(id) || !online.has(id)) return false;
+        const other = q.byId.get(id);
+        if (!other) return false;
+        const waited = Math.max(Date.now() - joinedAt, Date.now() - matchmakingQueue.get(uid));
+        const maxGap = waited < 10000 ? 150 : waited < 20000 ? 250 : waited < 30000 ? 400 : Infinity;
+        return Math.abs(myRating - other.rating) <= maxGap;
+      });
+      if (candidates.length) {
+        const [otherId] = candidates.sort((a, b) => Math.abs(myRating - q.byId.get(a[0]).rating) - Math.abs(myRating - q.byId.get(b[0]).rating) || a[1] - b[1])[0];
+        matchmakingQueue.delete(uid); matchmakingQueue.delete(otherId);
+        const id = crypto.randomBytes(4).toString('hex');
+        const ids = [otherId, uid];
+        const members = ids.map(id => q.byId.get(id)).filter(Boolean);
+        const r = { id, name: 'Quick Match', host: otherId, max: 2, members: ids,
+          game: null, chat: [], result: null, timer: null, aiGame: false, aiDifficulty: 'normal',
+          rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
+        const list = members.map(u => ({ id: u.id, name: u.display_name || u.username }));
+        for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+        r.game = M.newGame(list, r.rules); rooms.set(id, r); ids.forEach(x => userRoom.set(x, id));
+        persistRoom(r);
+      }
+      pushAll(); return { ok: true, waiting: matchmakingQueue.has(uid) };
+    }
+    case 'cancelMatch': matchmakingQueue.delete(uid); pushAll(); return { ok: true };
+    case 'playAI': {
+      if (room) return { error: 'Leave your current table first' };
+      matchmakingQueue.delete(uid);
+      const count = Math.min(3, Math.max(1, Number(m.count) || 2));
+      const difficulty = ['easy', 'normal', 'hard'].includes(m.difficulty) ? m.difficulty : 'normal';
+      const id = crypto.randomBytes(4).toString('hex');
+      const list = [{ id: uid, name: user.display_name || user.username }];
+      for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
+      for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+      const r = { id, name: 'AI Practice', host: uid, max: list.length, members: [uid], game: M.newGame(list, { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }),
+        chat: [], result: null, timer: null, aiGame: true, aiDifficulty: difficulty,
+        rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
+      rooms.set(id, r); userRoom.set(uid, id); persistRoom(r); armTimer(r); pushAll();
+      return { ok: true };
+    }
+    case 'rematchAI': {
+      if (!room || !room.aiGame || room.game) return { error: 'AI rematch is not available' };
+      const human = q.byId.get(uid);
+      const bots = room.result?.rows?.filter(x => x.username && x.username !== human.username) || [];
+      const count = Math.min(3, Math.max(1, bots.length || room.max - 1 || 2));
+      const list = [{ id: uid, name: human.display_name || human.username }];
+      for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
+      for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+      room.game = M.newGame(list, room.rules); room.result = null; persistRoom(room); armTimer(room); pushAll();
+      return { ok: true };
+    }
     case 'createRoom': {
       if (room) return { error: 'You are already at a table' };
       const id = crypto.randomBytes(4).toString('hex');
@@ -281,7 +361,7 @@ function handleAct(user, m) {
         id, name: str(m.name, 30).trim() || user.username + "'s table",
         host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)),
         members: [uid], game: null, chat: [], result: null, timer: null,
-        rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 },
+        rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }, aiGame: false, aiDifficulty: 'normal',
       });
       userRoom.set(uid, id);
       persistRoom(rooms.get(id));
@@ -428,7 +508,7 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'POST' && url.pathname === '/api/logout') {
     const t = req.headers['x-token'];
-    if (t) q.delToken.run(String(t));
+    if (t) { const u = userByToken(t); if (u) matchmakingQueue.delete(u.id); q.delToken.run(String(t)); }
     return send(res, 200, { ok: true });
   }
 

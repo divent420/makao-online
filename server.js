@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS games(
   finished INTEGER NOT NULL, winner_id INTEGER, players TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS active_rooms(
   room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS game_replays(
+  game_id INTEGER PRIMARY KEY, started INTEGER NOT NULL, finished INTEGER NOT NULL, winner_id INTEGER,
+  players TEXT NOT NULL, rules TEXT NOT NULL, snapshots TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS game_replay_players(game_id INTEGER NOT NULL, user_id INTEGER NOT NULL, PRIMARY KEY(game_id,user_id));
 `);
 Progression.initialize(db);
 Shop.initialize(db);
@@ -70,6 +74,9 @@ const q = {
   saveRoom: db.prepare('INSERT INTO active_rooms(room_id,snapshot,updated) VALUES(?,?,?) ON CONFLICT(room_id) DO UPDATE SET snapshot=excluded.snapshot, updated=excluded.updated'),
   delRoom: db.prepare('DELETE FROM active_rooms WHERE room_id=?'),
   activeRooms: db.prepare('SELECT room_id,snapshot FROM active_rooms ORDER BY updated'),
+  replayList: db.prepare('SELECT g.game_id AS id,g.started,g.finished,g.winner_id,g.players,g.rules FROM game_replays g JOIN game_replay_players p ON p.game_id=g.game_id WHERE p.user_id=? ORDER BY g.finished DESC LIMIT 20'),
+  replayById: db.prepare('SELECT * FROM game_replays WHERE game_id=?'),
+  replayAccess: db.prepare('SELECT 1 FROM game_replay_players WHERE game_id=? AND user_id=?'),
 };
 
 
@@ -138,11 +145,18 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, game: room.game, lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, game: room.game, gameHistory: room.gameHistory || [], lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
   q.saveRoom.run(room.id, JSON.stringify(snapshot), Date.now());
+}
+function beginGameHistory(room) { room.gameHistory = room.game ? [structuredClone(room.game)] : []; }
+function recordGameState(room) {
+  if (!room || !room.game) return;
+  const snap = structuredClone(room.game), history = room.gameHistory || (room.gameHistory = []);
+  const last = history[history.length - 1];
+  if (!last || JSON.stringify(last) !== JSON.stringify(snap)) history.push(snap);
 }
 function deleteRoomSnapshot(roomId) {
   q.delRoom.run(roomId);
@@ -230,7 +244,8 @@ function restoreRooms() {
       const room = {
         id: saved.id, name: str(saved.name, 30), host: saved.members.includes(saved.host) ? saved.host : saved.members[0],
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
-        members: saved.members, game: saved.game || null,
+        members: saved.members, game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
+        gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
         tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null,
@@ -254,6 +269,7 @@ function restoreRooms() {
 
 function finishGame(room) {
   clearTimeout(room.timer);
+  recordGameState(room);
   const st = room.game;
   const players = st.players;
   const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
@@ -275,6 +291,12 @@ function finishGame(room) {
     for (const bot of players.filter(p => p.id < 0)) result.rows.push({ username: bot.name, delta: 0, rating: 0, won: players.indexOf(bot) === st.winner });
     const gameInsert = q.insGame.run(playedAt, result.winnerId, JSON.stringify({ ranked, aiGame: !!room.aiGame, rules: room.rules, rows: result.rows }));
     const gameId = Number(gameInsert.lastInsertRowid);
+    const replayPlayers = players.map(p => ({ id:p.id, name:p.name }));
+    const snapshots = room.gameHistory && room.gameHistory.length ? room.gameHistory : [structuredClone(st)];
+    db.prepare('INSERT INTO game_replays(game_id,started,finished,winner_id,players,rules,snapshots) VALUES(?,?,?,?,?,?,?)')
+      .run(gameId, Number(room.gameStartedAt) || playedAt, playedAt, result.winnerId, JSON.stringify(replayPlayers), JSON.stringify(room.rules), JSON.stringify(snapshots));
+    const addReplayPlayer = db.prepare('INSERT OR IGNORE INTO game_replay_players(game_id,user_id) VALUES(?,?)');
+    for (const player of players.filter(p => p.id > 0)) addReplayPlayer.run(gameId, player.id);
     for (const player of players.filter(p => p.id > 0)) {
       const won = players.indexOf(player) === st.winner;
       const opponents = players.filter(p => p.id !== player.id).map(p => p.name);
@@ -293,6 +315,7 @@ function finishGame(room) {
   room.game = null;
 }
 function afterAction(room) {
+  recordGameState(room);
   if (room.game && room.game.winner != null) finishGame(room);
   else armTimer(room);
   persistRoom(room);
@@ -351,7 +374,7 @@ function handleAct(user, m) {
           rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
         const list = members.map(u => ({ id: u.id, name: u.display_name || u.username }));
         for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-        r.game = M.newGame(list, r.rules); rooms.set(id, r); ids.forEach(x => userRoom.set(x, id));
+        r.game = M.newGame(list, r.rules); r.gameStartedAt = Date.now(); beginGameHistory(r); rooms.set(id, r); ids.forEach(x => userRoom.set(x, id));
         persistRoom(r);
       }
       pushAll(); return { ok: true, waiting: matchmakingQueue.has(uid) };
@@ -367,9 +390,9 @@ function handleAct(user, m) {
       for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       const r = { id, name: 'AI Practice', host: uid, max: list.length, members: [uid], game: M.newGame(list, { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }),
-        chat: [], result: null, lastGame: null, rematchVotes: [], timer: null, aiGame: true, aiDifficulty: difficulty,
+        chat: [], result: null, lastGame: null, rematchVotes: [], timer: null, aiGame: true, aiDifficulty: difficulty, gameStartedAt: Date.now(),
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
-      rooms.set(id, r); userRoom.set(uid, id); persistRoom(r); armTimer(r); pushAll();
+      beginGameHistory(r); rooms.set(id, r); userRoom.set(uid, id); persistRoom(r); armTimer(r); pushAll();
       return { ok: true };
     }
     case 'rematchAI': {
@@ -380,7 +403,7 @@ function handleAct(user, m) {
       const list = [{ id: uid, name: human.display_name || human.username }];
       for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-      room.game = M.newGame(list, room.rules); room.lastGame = null; room.rematchVotes = []; room.result = null; persistRoom(room); armTimer(room); pushAll();
+      room.game = M.newGame(list, room.rules); room.gameStartedAt = Date.now(); beginGameHistory(room); room.lastGame = null; room.rematchVotes = []; room.result = null; persistRoom(room); armTimer(room); pushAll();
       return { ok: true };
     }
     case 'rematch': {
@@ -391,7 +414,7 @@ function handleAct(user, m) {
       if (votes >= room.members.length) {
         const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
         for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-        room.game = M.newGame(list, room.rules); room.lastGame = null; room.result = null; room.rematchVotes = [];
+        room.game = M.newGame(list, room.rules); room.gameStartedAt = Date.now(); beginGameHistory(room); room.lastGame = null; room.result = null; room.rematchVotes = [];
         armTimer(room); persistRoom(room); pushAll(); return { ok: true, started: true };
       }
       persistRoom(room); pushAll(); return { ok: true, votes, required: room.members.length };
@@ -443,6 +466,7 @@ function handleAct(user, m) {
       const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       room.game = M.newGame(list, room.rules);
+      room.gameStartedAt = Date.now(); beginGameHistory(room);
       room.lastGame = null; room.rematchVotes = []; room.result = null;
       armTimer(room);
       break;
@@ -599,10 +623,10 @@ const server = http.createServer((req, res) => {
       const list = players.map(u => ({ id:u.id, name:u.display_name || u.username }));
       for (let i=list.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
       const room = { id:roomId, name:'Weekly Cup · Round '+match.round, host:match.player1_id, max:2, members:ids,
-        game:M.newGame(list,rules), chat:[], result:null, timer:null, aiGame:false, aiDifficulty:'normal', rules,
+        game:M.newGame(list,rules), gameStartedAt:Date.now(), chat:[], result:null, timer:null, aiGame:false, aiDifficulty:'normal', rules,
         tournamentId:match.tournament_id, tournamentMatchId:match.id };
       if (!Tournaments.setMatchRoom(db, match.id, roomId)) return send(res, 409, { error:'This tournament match was just claimed' });
-      rooms.set(roomId,room); ids.forEach(id=>userRoom.set(id,roomId));
+      beginGameHistory(room); rooms.set(roomId,room); ids.forEach(id=>userRoom.set(id,roomId));
       persistRoom(room); armTimer(room); pushAll();
       return send(res,200,{ok:true,roomId});
     });
@@ -756,6 +780,28 @@ const server = http.createServer((req, res) => {
       const result = Shop.equip(db,user.id,m.cosmeticId);
       return result.error ? send(res, 400, result) : send(res, 200, result);
     });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/games') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error:'Not signed in' });
+    const games = q.replayList.all(user.id).map(g => {
+      let players=[], rules={}; try { players=JSON.parse(g.players); rules=JSON.parse(g.rules); } catch (_) {}
+      return { id:g.id, started:g.started, finished:g.finished, winnerId:g.winner_id, players, rules };
+    });
+    return send(res, 200, { games });
+  }
+
+  const replayMatch = url.pathname.match(/^\/api\/games\/(\d+)$/);
+  if (req.method === 'GET' && replayMatch) {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error:'Not signed in' });
+    const id = Number(replayMatch[1]);
+    if (!q.replayAccess.get(id,user.id)) return send(res,404,{error:'Game replay not found'});
+    const game = q.replayById.get(id);
+    if (!game) return send(res,404,{error:'Game replay not found'});
+    try { return send(res,200,{ game:{ id:game.game_id,started:game.started,finished:game.finished,winnerId:game.winner_id,players:JSON.parse(game.players),rules:JSON.parse(game.rules),snapshots:JSON.parse(game.snapshots) } }); }
+    catch (_) { return send(res,500,{error:'This replay could not be loaded'}); }
   }
 
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {

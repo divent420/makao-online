@@ -537,7 +537,7 @@ function applyShopEffects() {
 applyTheme();
 let dismissed = Number(localStorage.getItem('mk_dismissed') || 0);
 
-const cardParts = (c) => String(c).match(/^(.+?)([SHDC])(?:~\\d+)?$/);
+const cardParts = (c) => String(c).match(/^(.+?)([SHDC])(?:~\d+)?$/);
 const rank = (c) => cardParts(c)?.[1] || String(c).slice(0, -1), suit = (c) => cardParts(c)?.[2] || String(c).slice(-1);
 
 // ---------- network ----------

@@ -50,7 +50,7 @@ const q = {
   insSession: db.prepare('INSERT INTO sessions(token,user_id,created) VALUES(?,?,?)'),
   byToken: db.prepare('SELECT u.*, s.created AS s_created FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?'),
   delToken: db.prepare('DELETE FROM sessions WHERE token=?'),
-  top: db.prepare('SELECT username,rating,games,wins FROM users WHERE games>0 ORDER BY rating DESC, wins DESC, games ASC LIMIT 50'),
+  top: db.prepare('SELECT id,username,display_name,avatar,rating,games,wins FROM users WHERE games>0 ORDER BY rating DESC, wins DESC, games ASC LIMIT 50'),
   upd: db.prepare('UPDATE users SET rating=?, games=games+1, wins=wins+? WHERE id=?'),
   insGame: db.prepare('INSERT INTO games(finished,winner_id,players) VALUES(?,?,?)'),
 };
@@ -324,6 +324,17 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/me') {
     const u = userByToken(req.headers['x-token']);
     return u ? send(res, 200, { user: userView(u) }) : send(res, 401, { error: 'Not signed in' });
+  }
+
+  // Public player cards: expose only fields intended for the in-game profile.
+  if (req.method === 'GET' && url.pathname.startsWith('/api/players/')) {
+    const viewer = userByToken(req.headers['x-token']);
+    if (!viewer) return send(res, 401, { error: 'Not signed in' });
+    const id = Number(url.pathname.slice('/api/players/'.length));
+    if (!Number.isSafeInteger(id) || id < 1) return send(res, 400, { error: 'Invalid player' });
+    const player = q.byId.get(id);
+    if (!player) return send(res, 404, { error: 'Player not found' });
+    return send(res, 200, { user: userView(player) });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/profile') {

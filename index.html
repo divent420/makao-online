@@ -1147,7 +1147,7 @@ function adminScreen() {
 
 function localLobbyScreen(){
   const count=Number($('localCount')?.value||2);
-  const fields=h('div',{class:'settings-grid',style:'gap:10px;margin-top:14px'},[1,2,3,4].map(n=>h('label',{style:'display:'block'},h('small',{class:'muted'},'PLAYER '+n),h('input',{id:'localName'+n,placeholder:'Player '+n,value:n===1?(S.me.displayName||S.me.username):'',maxlength:24,style:'width:100%'}))));
+  const fields=h('div',{class:'settings-grid',style:'gap:10px;margin-top:14px'},[1,2,3,4].map(n=>h('label',{id:'localPlayerField'+n,style:n>count?'display:none':'display:block'},h('small',{class:'muted'},'PLAYER '+n),h('input',{id:'localName'+n,placeholder:'Player '+n,value:n===1?(S.me.displayName||S.me.username):'',maxlength:24,style:'width:100%'}))));
   const panel=h('div',{class:'panel',style:'max-width:620px;margin:24px auto;padding:22px'},
     h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('div',{},h('div',{class:'eyebrow'},'LOCAL GAME LOBBY'),h('h1',{style:'margin:5px 0'},'Pass & Play')),h('span',{style:'font-size:32px'},'🃏')),
     h('p',{class:'muted'},'Set up your players before starting. Everyone plays on this device; cards are hidden behind a handoff screen between turns.'),

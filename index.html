@@ -1101,6 +1101,7 @@ function gameScreen() {
 }
 function tick() {
   const t = $('timer');
+  if (S?.room?.localGame) { if(t) t.textContent='Local game · no timer'; return; }
   if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }
   const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
   t.textContent = S.game.myTurn ? 'Your turn · ' + s + 's' : s + 's';

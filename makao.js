@@ -21,7 +21,7 @@ const SUITS = ['S', 'H', 'D', 'C'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const DEMAND_RANKS = ['5', '6', '7', '8', '9', '10'];
 
-const cardParts = (c) => String(c).match(/^(.+?)([SHDC])(?:~\\d+)?$/);
+const cardParts = (c) => String(c).match(/^(.+?)([SHDC])(?:~\d+)?$/);
 const rank = (c) => cardParts(c)?.[1] || String(c).slice(0, -1);
 const suit = (c) => cardParts(c)?.[2] || String(c).slice(-1);
 

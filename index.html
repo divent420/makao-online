@@ -1153,7 +1153,7 @@ function localLobbyScreen(){
     h('p',{class:'muted'},'Set up your players before starting. Everyone plays on this device; cards are hidden behind a handoff screen between turns.'),
     h('label',{},'Number of players',h('select',{id:'localCount',style:'width:100%;margin-top:6px',onchange:()=>{const n=Number($('localCount').value);for(let i=1;i<=4;i++)$('localPlayerField'+i).style.display=i<=n?'block':'none';}},[2,3,4].map(n=>h('option',{value:n,selected:n===2},n+' players')))),
     fields,
-    h('div',{class:'row',style:'justify-content:space-between;margin-top:20px'},h('button',{class:'alt',onclick:()=>{activeScreen='home';render();}},'← Back'),h('button',{onclick:async()=>{const n=Number($('localCount').value);const names=Array.from({length:n},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}},'Start game →')));
+    h('div',{class:'row',style:'justify-content:space-between;margin-top:20px'},h('button',{class:'alt',onclick:()=>{activeScreen='home';render();}},'← Back'),h('button',{onclick:async()=>{const n=Number($('localCount').value);const names=Array.from({length:n},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}}},'Start game →')));
   mount(h('div',{class:'wrap app-shell'},topBar(),panel,bottomNav('home')));
 }
 

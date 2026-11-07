@@ -436,7 +436,9 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'state') {
       const prevTurn = S && S.game ? S.game.myTurn : false;
+      const leftTable = !!(S && S.room && !m.room);
       S = m;
+      if (leftTable) loadGameHistory(true);
       if (!shopData && !shopLoading) loadShop();
       sel = sel.filter((c) => S.game && S.game.hand.includes(c));
       if (!S.game || !S.game.myTurn) { sel = []; choose = null; sayMakao = false; }

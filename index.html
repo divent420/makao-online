@@ -347,7 +347,7 @@ table td,table th{border-color:#ffffff18}
 .admin-players-panel,.admin-reports-panel { background:linear-gradient(145deg,#172f25,#11251d) !important; border-color:#315746 !important; }
 
 /* Stable timer slot: countdown text must never reflow the table. */
-.game-timer{display:flex;align-items:center;justify-content:center;width:190px;min-width:190px;height:36px;min-height:36px;box-sizing:border-box;flex:0 0 190px;margin:0 auto;padding:0 12px;border:1px solid #b99a4c66;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
+.game-timer{display:flex;align-items:center;justify-content:center;width:112px;min-width:112px;height:27px;min-height:27px;box-sizing:border-box;flex:0 0 112px;margin:0 auto;padding:0 8px;font-size:11px;border:1px solid #b99a4c66;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
 .game-table-felt{align-items:stretch;}
 .game-log{min-height:34px;max-height:34px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
 .rule-setting,.rule-settings,.rule-settings label{background:#172f25!important;border-color:#315746!important;color:#e8eee5!important;}
@@ -357,6 +357,7 @@ table td,table th{border-color:#ffffff18}
 .challenge-track{background:#0b2119!important;border-color:#315744!important;}
 .challenge-track>div{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
 .shop-preview-section .shop-preview{margin-top:8px;}
+  .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:1fr}.game-timer{width:104px;min-width:104px;flex-basis:104px;height:25px;min-height:25px}}
 </style>
 </head>
 <body>
@@ -802,11 +803,6 @@ function lobbyScreen() {
     h('button',{class:'option-play',onclick:()=>act({t:'playAI',count:Number($('aiCount').value),difficulty:$('aiDifficulty').value})},'Play →'));
   const privatePanel=h('button',{class:'play-option-card friends-option',onclick:async()=>{const r=await act({t:'createRoom',name:(S.me.displayName||S.me.username)+"'s table",max:4});if(r.error)return;activeScreen='social';await loadSocial();render();}},
     h('div',{class:'option-icon'},'👥'),h('div',{class:'option-copy'},h('strong',{},'Play with friends'),h('p',{},'Create a private lobby, then invite your friends')),h('span',{class:'option-arrow'},'→'));
-  const localPanel=h('section',{class:'play-option-card local-option',style:'margin-top:12px;display:block'},
-    h('div',{class:'row',style:'align-items:center;gap:12px'},h('div',{class:'option-icon'},'🃏'),h('div',{class:'option-copy grow'},h('strong',{},'Pass & Play'),h('p',{},'Play together on one device · 2–4 players · no ratings'))),
-    h('div',{class:'ai-controls',style:'margin:10px 0'},h('select',{id:'localCount','aria-label':'Local players',onchange:(e)=>{for(let n=1;n<=4;n++){$('localName'+n).style.display=n<=Number(e.target.value)?'':'none';}}},[2,3,4].map(n=>h('option',{value:n,selected:n===2},n+' players')))),
-    h('div',{class:'settings-grid',style:'gap:8px'},[1,2,3,4].map(n=>h('input',{id:'localName'+n,placeholder:'Player '+n,value:n===1?(S.me.displayName||S.me.username):'',maxlength:24,style:n>2?'display:none':''}))),
-    h('button',{class:'option-play',style:'margin-top:10px;width:100%',onclick:async()=>{const count=Number($('localCount').value);const names=Array.from({length:count},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}}},'Start local game →'));
   const openTables=h('section',{class:'home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Open tables'),h('p',{},S.lobbies.length+' tables looking for players')),h('button',{class:'text-action',onclick:()=>{const el=document.getElementById('create-table');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}},'+ Create')),
     list,
@@ -818,7 +814,7 @@ function lobbyScreen() {
   const welcome=h('div',{class:'welcome-row'},h('div',{},h('div',{class:'eyebrow'},'WELCOME BACK'),h('h1',{},'Ready to play?'),h('p',{},'Your next win is one game away.')),h('div',{class:'level-pill'},h('span',{},'♛'),h('strong',{},'Player'),h('small',{},'Level up as you play')));
   mount(h('div',{class:'wrap app-shell'},topBar(),welcome,
     h('div',{class:'home-layout'},
-      h('main',{class:'home-main'},h('section',{class:'play-hub'},h('div',{class:'section-heading'},h('div',{},h('h2',{},'Choose your game'),h('p',{},'The table is waiting for you'))),quick,h('div',{class:'play-options'},aiPanel,privatePanel,localPanel)),openTables,historyPanel),
+      h('main',{class:'home-main'},h('section',{class:'play-hub'},h('div',{class:'section-heading'},h('div',{},h('h2',{},'Choose your game'),h('p',{},'The table is waiting for you'))),h('div',{class:'primary-game-actions'},quick,h('button',{class:'pass-play-button',onclick:()=>{activeScreen='localLobby';render();}},h('span',{style:'font-size:25px'},'🃏'),h('span',{},h('strong',{},'PASS & PLAY'),h('small',{},'One device · 2–4 players')))),h('div',{class:'play-options'},aiPanel,privatePanel))),openTables,historyPanel),
       h('aside',{class:'home-sidebar'},rankPanel,h('section',{class:'promo-card'},h('div',{class:'promo-sparkle'},'✦'),h('div',{class:'eyebrow'},'MAKE IT YOURS'),h('h3',{},'Your style. Your table.'),h('p',{},'Unlock card backs, table themes and avatar frames.'),h('button',{class:'promo-button',onclick:showShop},'Explore shop →')))),
     h('details',{class:'how-to-panel'},h('summary',{},'How to play Makao'),h('ul',{class:'rules'},RULES.map(r=>h('li',{},r)))),
     bottomNav('home')));
@@ -1149,6 +1145,18 @@ function adminScreen() {
   return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin panel'),h('p',{class:'muted'},'Manage player reports and player coin balances.'),usersPanel,panel,bottomNav('admin')));
 }
 
+function localLobbyScreen(){
+  const count=Number($('localCount')?.value||2);
+  const fields=h('div',{class:'settings-grid',style:'gap:10px;margin-top:14px'},[1,2,3,4].map(n=>h('label',{style:'display:'block'},h('small',{class:'muted'},'PLAYER '+n),h('input',{id:'localName'+n,placeholder:'Player '+n,value:n===1?(S.me.displayName||S.me.username):'',maxlength:24,style:n>count?'display:none;width:100%':'width:100%'}))));
+  const panel=h('div',{class:'panel',style:'max-width:620px;margin:24px auto;padding:22px'},
+    h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('div',{},h('div',{class:'eyebrow'},'LOCAL GAME LOBBY'),h('h1',{style:'margin:5px 0'},'Pass & Play')),h('span',{style:'font-size:32px'},'🃏')),
+    h('p',{class:'muted'},'Set up your players before starting. Everyone plays on this device; cards are hidden behind a handoff screen between turns.'),
+    h('label',{},'Number of players',h('select',{id:'localCount',style:'width:100%;margin-top:6px',onchange:()=>{const n=Number($('localCount').value);for(let i=1;i<=4;i++)$('localName'+i).style.display=i<=n?'':'none';}},[2,3,4].map(n=>h('option',{value:n,selected:n===2},n+' players')))),
+    fields,
+    h('div',{class:'row',style:'justify-content:space-between;margin-top:20px'},h('button',{class:'alt',onclick:()=>{activeScreen='home';render();}},'← Back'),h('button',{onclick:async()=>{const n=Number($('localCount').value);const names=Array.from({length:n},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}},'Start game →')));
+  mount(h('div',{class:'wrap app-shell'},topBar(),panel,bottomNav('home')));
+}
+
 function render() {
   if (!token) return authScreen();
   if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
@@ -1157,6 +1165,7 @@ function render() {
   if (activeScreen === 'customize' || activeScreen === 'shop') return shopScreen();
   if (activeScreen === 'social') return socialScreen();
   if (activeScreen === 'admin') return adminScreen();
+  if (activeScreen === 'localLobby') return localLobbyScreen();
   if (S.game) return gameScreen();
   if (S.room) return roomScreen();
   lobbyScreen();

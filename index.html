@@ -253,6 +253,84 @@ button.alt{background:#263b30;color:#e8eee8;border:1px solid #385646;box-shadow:
 @media(max-width:600px){.wrap.app-shell{padding:10px 12px 100px}.app-topbar{height:58px;margin-bottom:22px;padding:7px 9px;gap:8px;border-radius:15px}.brand-mark{min-width:0;gap:7px}.brand-mark strong{font-size:12px}.brand-mark small{font-size:8px}.brand-card{width:29px;height:34px;font-size:21px}.wallet-chip{padding:7px 9px;font-size:11px}.profile-chip{padding:5px 7px}.profile-name{display:none}.profile-chip .avatar{width:27px;height:27px}.welcome-row{margin:0 3px 18px}.welcome-row h1{font-size:28px}.welcome-row p{font-size:11px}.level-pill{padding:8px 10px}.level-pill span{font-size:20px}.level-pill strong{font-size:10px}.level-pill small{font-size:9px}.home-layout{gap:14px}.home-main,.home-sidebar{gap:14px}.play-hub,.home-section,.promo-card{padding:15px;border-radius:17px}.section-heading{margin-bottom:13px}.play-options{grid-template-columns:1fr}.quick-match-button{min-height:86px;padding:14px;gap:12px}.quick-match-icon{width:46px;height:46px}.quick-match-copy strong{font-size:16px}.home-sidebar{grid-template-columns:1fr}.home-sidebar .leaderboard-home{grid-row:auto}.create-table-form{flex-wrap:wrap}.create-table-form input{flex-basis:100%}.app-bottom-nav{position:fixed;z-index:30;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));width:auto;justify-content:space-around;margin:0;padding:5px;border-radius:17px;backdrop-filter:blur(16px);box-shadow:0 8px 30px #0008}.app-bottom-nav button{flex:1;min-width:0;padding:7px 3px;font-size:9px}.app-bottom-nav button span:first-child{font-size:18px}.how-to-panel{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){button{transition:none}button:hover{transform:none}}
 
+
+/* Cohesive emerald game UI overrides: remove the leftover blue/grey palette */
+:root{--panel:#172a20;--line:#34503e;--accent:#d8b85e;--text:#f4f2e9;--muted:#a4b5a7;--gold:#e9c76a}
+body{background:radial-gradient(ellipse at 50% -20%,#1c4937 0,#101c17 48%,#0b1410 100%);color:#f4f2e9}
+.panel,.auth{background:linear-gradient(145deg,#1b3025,#14241b);border-color:#344d3a;color:#f4f2e9}
+h2,.screen-title{color:#f0e6c9}
+input,select{background:#10251a;color:#f4f2e9;border-color:#45634c}
+input::placeholder{color:#829989}
+button.alt{background:#263b30;color:#e8eee8;border-color:#45604a}
+button.warn{background:linear-gradient(180deg,#b95b4d,#873c35);color:#fff}
+.muted,th{color:#a4b5a7}
+table td,table th{border-color:#ffffff18}
+.auth{box-shadow:0 20px 60px #0005}
+.profile-chip{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:5px 10px;line-height:1}
+.profile-chip .avatar,.avatar{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;line-height:1;overflow:hidden}
+.profile-chip .avatar{width:30px;height:30px;min-width:30px;font-size:19px;padding:0;margin:0}
+.avatar.big{width:76px;height:76px;min-width:76px;font-size:38px}
+.app-topbar .profile-chip{height:44px;align-self:center}
+.game-screen{max-width:1120px;padding-top:14px}
+.game-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px;padding:10px 14px;border:1px solid #ffffff15;border-radius:17px;background:#102219dc}
+.game-title-lockup{display:flex;align-items:center;gap:12px;min-width:0}.game-title-lockup strong{display:block;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:#f5e5b2}.game-title-lockup small{display:block;margin-top:3px;font-size:9px;letter-spacing:.18em;color:#9db19f}
+.leave-game-button{padding:9px 14px;background:#263b30;color:#f2e9d1;border:1px solid #50634b;box-shadow:none}
+.game-table-frame{padding:7px;border-radius:27px;background:linear-gradient(135deg,#9a7a3b,#d4b86d 22%,#72552c 75%,#c8a75b);box-shadow:0 18px 48px #0006}
+.game-table-felt{position:relative;display:flex;flex-direction:column;gap:15px;min-height:590px;padding:22px;border:1px solid #ffffff36;border-radius:22px;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt2) 100%);box-shadow:inset 0 0 65px #001b13a8,inset 0 0 0 5px #ffffff08;overflow:hidden}
+.game-opponents{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;min-height:68px}
+.game-player-card{display:grid;grid-template-columns:38px auto;grid-template-rows:auto auto;align-items:center;column-gap:9px;min-width:130px;padding:9px 12px;border:1px solid #ffffff22;border-radius:15px;background:#061b14a8;box-shadow:0 6px 16px #00140d55;backdrop-filter:blur(7px);color:#f3f3e8}
+.game-player-card.turn{border:2px solid var(--gold);box-shadow:0 0 0 3px #e9c76a30,0 6px 18px #00140d66}
+.game-player-card.out{opacity:.45;filter:grayscale(.8)}
+.game-avatar{grid-row:1 / span 2;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(145deg,#557a58,#233e2d);border:1px solid #b9c88b;font-size:20px;line-height:1}
+.game-player-details{min-width:0;display:grid;gap:3px}.game-player-details strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.game-player-details small{font-size:10px;color:#c2d0c1}
+.game-player-card .mini{grid-column:2;justify-content:flex-start;min-height:14px;margin-top:4px}.game-player-card .mini i{width:9px;height:14px;margin-left:-4px;border:1px solid #fff9;background:var(--back-pattern);border-radius:2px}
+.game-status-banner{text-align:center;min-height:31px;color:#f4e7bc;font-size:12px;font-weight:750}.game-status-banner span{display:inline-block;padding:8px 16px;border:1px solid #ffffff20;border-radius:99px;background:#061b14a8}.game-status-banner .bad{color:#ffd0c6;border-color:#d17b65}
+.game-center-piles{display:flex;justify-content:center;align-items:center;gap:clamp(25px,7vw,80px);flex:1;min-height:170px}
+.pile-slot{display:grid;justify-items:center;gap:6px;color:#d9e4d5}.pile-slot small{font-size:9px;letter-spacing:.15em;color:#b8cbb9}.pile-slot strong{font-size:11px;color:#f2e4b7}
+.pile-slot .card{width:clamp(54px,6vw,70px);height:clamp(78px,8vw,98px)}
+.pile-slot .card.back{background:var(--back-pattern)}
+.game-log{text-align:center;min-height:28px;color:#d4e2d4;font-size:11px}.game-timer{text-align:center;font-size:13px;font-weight:800;color:#f3d783}
+.game-actions{min-height:48px;padding:9px;border:1px solid #ffffff1c;border-radius:15px;background:#061b14a8}.game-actions button{min-height:42px}.game-actions button:disabled{opacity:.45}
+.your-hand-label{text-align:center;font-size:9px;letter-spacing:.2em;font-weight:900;color:#d8c17b;margin-top:3px}
+.game-hand{justify-content:center;gap:clamp(2px,.7vw,8px);padding:5px 0 8px}
+.game-hand .card{width:clamp(48px,5.7vw,68px);height:clamp(70px,8vw,96px);margin:0;flex:none}
+.game-hand .card.legal{box-shadow:0 0 0 2px #f0d16f,0 0 15px #e9c76a66}
+.game-hand .card.dim{opacity:.5}
+.game-hand .card.sel{transform:translateY(-12px);box-shadow:0 0 0 3px #f5d47a,0 8px 18px #0007}
+.own-player-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:9px 12px;border-top:1px solid #ffffff20;margin-top:2px}
+.own-game-avatar{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;min-width:38px;border-radius:50%;font-size:22px;line-height:1;background:#f1dfaa;color:#21452f;border:2px solid #d9bd70}
+.own-player-copy{display:grid;gap:3px}.own-player-copy strong{font-size:12px}.own-player-copy small{font-size:10px;color:#c0d0bd}
+.own-hand-count{margin-left:8px;padding:6px 9px;border-radius:9px;background:#ffffff16;color:#f0dfad;font-size:10px}
+.game-chat-panel,.game-result-panel{margin-top:14px!important}
+.game-chat-panel #chat{background:#0c2118;border:1px solid #ffffff16;color:#e6eee3}
+.game-chat-panel input{width:100%;margin-top:8px}
+.makao-call{display:inline-flex;align-items:center;gap:6px;color:#f0e2b7;font-size:12px}.makao-call input{accent-color:#d8b85e}
+.shop-preview{padding:14px;border:1px solid #42604a;background:var(--table-pattern);border-radius:16px;box-shadow:inset 0 0 25px #001b13a8}
+.preview-opponents{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.preview-opponents span{padding:6px 10px;border:1px solid #ffffff2b;border-radius:99px;background:#061b14a8;color:#e4eddf;font-size:9px}
+.preview-play-area{display:flex;justify-content:center;align-items:center;gap:35px;padding:12px 0}
+.preview-pile{display:grid;justify-items:center;gap:5px}.preview-pile .card{width:40px;height:58px;font-size:13px}.preview-pile .card .s{font-size:18px}.preview-pile small{font-size:8px;letter-spacing:.13em;color:#e0e8d7}
+.preview-hand{display:flex;justify-content:center;gap:5px;padding:8px 0 2px}.preview-hand .card{width:35px;height:51px;font-size:12px}.preview-hand .card .s{font-size:16px}
+.preview-caption{text-align:center;margin-top:9px;color:#e1e9d9;font-size:9px;letter-spacing:.06em}
+@media(max-width:760px){
+ .game-screen{padding:10px 10px 90px}
+ .game-table-frame{padding:4px;border-radius:20px}
+ .game-table-felt{min-height:calc(100dvh - 180px);padding:12px 8px;gap:10px;border-radius:17px}
+ .game-opponents{gap:6px}.game-player-card{min-width:calc(50% - 5px);max-width:180px;padding:7px 8px;grid-template-columns:30px auto;column-gap:7px}
+ .game-avatar{width:29px;height:29px;font-size:17px}
+ .game-player-details strong{font-size:11px}.game-player-details small{font-size:9px}
+ .game-center-piles{min-height:125px;gap:25px}
+ .pile-slot .card{width:50px;height:73px}
+ .game-hand{gap:2px}.game-hand .card{width:clamp(37px,10.2vw,53px);height:clamp(57px,15.7vw,78px);padding:4px;font-size:14px;border-radius:var(--card-radius)}
+ .game-hand .card .s{font-size:19px}
+ .game-actions{position:sticky;bottom:72px;z-index:3;flex-wrap:wrap;background:#092017ed;backdrop-filter:blur(12px)}
+ .game-actions button{flex:1;min-width:105px;padding:9px}
+ .own-player-bar{padding:7px 4px}
+ .app-bottom-nav{display:flex}
+}
+@media(max-width:420px){.game-player-card{min-width:calc(50% - 4px)}.game-center-piles{gap:18px}.game-hand .card{width:clamp(34px,9.7vw,43px);height:clamp(52px,14.5vw,66px)}}
+@media(prefers-reduced-motion:reduce){.game-hand .card{transition:none}}
+
 </style>
 </head>
 <body>
@@ -777,7 +855,7 @@ function shopScreen() {
   ];
   const shapeGrid=h('div',{class:'shop-grid shape-grid'});
   shapes.forEach(([id,label])=>shapeGrid.append(h('button',{class:'alt shape-option'+(tableTheme.cards===id?' selected':''),disabled:tableTheme.cards===id,onclick:()=>{tableTheme.cards=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
-  const preview=h('div',{class:'shop-preview'},h('div',{class:'row',style:'gap:10px;justify-content:center'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'})));
+  const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
   content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape & preview'),shapeGrid,preview,
     h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};freeAppearance={};saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
   content.push(h('div',{class:'panel muted shop-earn-note'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server. All cosmetics are gameplay-neutral.'));
@@ -910,49 +988,49 @@ function clickCard(c) {
 
 function gameScreen() {
   const g = S.game;
-  const opps = h('div', { class: 'opps' });
+  const opps = h('div', { class: 'game-opponents' });
   g.players.filter((p) => p.id !== S.me.id).forEach((p) => {
     const mini = h('div', { class: 'mini' });
     for (let i = 0; i < Math.min(p.count, 12); i++) mini.append(h('i'));
-    opps.append(h('div', { class: 'opp' + (p.turn ? ' turn' : '') + (p.out ? ' out' : '') },
-      h('button', { class:'alt player-link', style:'padding:4px 6px;background:transparent;box-shadow:none', onclick:()=>openPlayerProfile(p.id) }, p.name),
-      h('div', { class: 'muted' }, p.out ? 'left' : p.count + ' cards' + (p.wait ? ' · waits ' + p.wait : '')), mini));
+    const avatar=h('span',{class:'game-avatar'},p.avatar||'🂡');
+    opps.append(h('div', { class: 'game-player-card' + (p.turn ? ' turn' : '') + (p.out ? ' out' : '') },
+      avatar,
+      h('div',{class:'game-player-details'},h('strong',{},p.name),h('small',{},p.out?'Finished':p.count+' cards'+(p.wait?' · waits '+p.wait:''))),
+      mini));
   });
 
   const finished = g.winner != null;
   const pend = g.pending, dem = g.demand;
-  const banner = h('div', { class: 'banner' });
+  const banner = h('div', { class: 'game-status-banner' });
   const canStack = g.rules.stackPenalties;
   if (finished) banner.append(h('span',{},'Game finished · final move shown above'));
   else if (pend) banner.append(h('span', { class: 'bad' }, pend.type === 'draw'
     ? 'Draw ' + pend.n + ' cards' + (canStack ? ', or answer with a penalty card (2 / 3 / K♥ / K♠)' : '')
     : 'Wait ' + pend.n + (pend.n > 1 ? ' turns' : ' turn') + (canStack ? ', or answer with a 4' : '')));
   else if (dem) banner.append(h('span', {}, 'Jack demands ' + dem.rank + ' (or play a J)'));
+  else banner.append(h('span',{},g.myTurn?'Your turn — make your move':'Waiting for the next player'));
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
-  const center = h('div', { class: 'center' },
-    h('div', { style: 'text-align:center' }, drawPile, h('div', { class: 'muted' }, g.deckCount + ' left')),
-    h('div', { style: 'text-align:center' }, cardEl(g.top), h('div', {}, 'suit ', suitEl(g.suit))));
+  const center = h('div', { class: 'game-center-piles' },
+    h('div', { class: 'pile-slot' }, drawPile, h('small', {}, 'DRAW PILE'), h('strong', {}, g.deckCount+' left')),
+    h('div', { class: 'pile-slot discard-slot' }, cardEl(g.top), h('small', {}, 'DISCARD'), h('strong', {}, 'Suit '+SYM[g.suit])));
 
-  const hand = h('div', { class: 'hand' });
+  const hand = h('div', { class: 'hand game-hand' });
   g.hand.forEach((c) => hand.append(cardEl(c, {
     cls: (sel.includes(c) ? 'sel ' : '') + (g.myTurn ? (g.legal.includes(c) ? 'legal' : 'dim') : ''),
     onclick: () => { if (!finished) clickCard(c); },
   })));
 
-  const actions = h('div', { class: 'actions' });
+  const actions = h('div', { class: 'actions game-actions' });
   if (finished) actions.append(h('span',{class:'muted'},'Final board — no more moves'));
   else if (choose) {
-    if (choose.kind === 'demand') {
-      actions.append('Demand a rank:', h('div', { class: 'pick' }, ['5', '6', '7', '8', '9', '10'].map((r) => h('button', { onclick: () => sendPlay(choose.cards, { demand: r }) }, r))));
-    } else {
-      actions.append('Choose a suit:', h('div', { class: 'pick' }, ['S', 'H', 'D', 'C'].map((s) => h('button', { class: 'alt', style: 'color:' + (s === 'H' || s === 'D' ? '#ff6b6b' : '#fff'), onclick: () => sendPlay(choose.cards, { suit: s }) }, SYM[s]))));
-    }
+    if (choose.kind === 'demand') actions.append('Demand a rank:', h('div', { class: 'pick' }, ['5', '6', '7', '8', '9', '10'].map((r) => h('button', { onclick: () => sendPlay(choose.cards, { demand: r }) }, r))));
+    else actions.append('Choose a suit:', h('div', { class: 'pick' }, ['S', 'H', 'D', 'C'].map((s) => h('button', { class: 'alt', style: 'color:' + (s === 'H' || s === 'D' ? '#ff6b6b' : '#fff'), onclick: () => sendPlay(choose.cards, { suit: s }) }, SYM[s]))));
     actions.append(h('button', { class: 'alt', onclick: () => { choose = null; render(); } }, 'Cancel'));
   } else if (g.myTurn) {
     const left = g.hand.length - sel.length;
     actions.append(h('button', { disabled: !sel.length, onclick: playSelected }, sel.length ? 'Play ' + sel.length + (sel.length > 1 ? ' cards' : ' card') : 'Pick a card'));
-    if (sel.length && left === 1 && g.rules.makaoCall) actions.append(h('label', {}, h('input', { type: 'checkbox', checked: sayMakao, onchange: (e) => { sayMakao = e.target.checked; } }), ' Say “Makao!”'));
+    if (sel.length && left === 1 && g.rules.makaoCall) actions.append(h('label', {class:'makao-call'}, h('input', { type: 'checkbox', checked: sayMakao, onchange: (e) => { sayMakao = e.target.checked; } }), ' Say “Makao!”'));
     if (pend && pend.type === 'skip') actions.append(h('button', { class: 'warn', onclick: () => act({ t: 'wait' }) }, 'Wait'));
     else if (pend) actions.append(h('button', { class: 'warn', onclick: () => act({ t: 'draw' }) }, 'Take ' + pend.n + ' cards'));
     else if (g.drew) actions.append(h('button', { class: 'alt', onclick: () => act({ t: 'pass' }) }, 'Pass'));
@@ -962,19 +1040,28 @@ function gameScreen() {
     actions.append(h('span', { class: 'muted' }, cur ? cur.name + "'s turn" : ''));
   }
 
-  const timer = h('div', { class: 'muted', id: 'timer', style: 'text-align:center' });
-  mount(h('div', { class: 'wrap' },
-    h('div', { class: 'bar' }, h('h1', {}, '🂡 Makao · ' + S.room.name + (S.room.ranked ? '' : ' · casual')), h('button', { class:'alt profile-chip', onclick:showOwnProfile }, (S.me.avatar||'🂡')+' '+(S.me.displayName||S.me.username)),
-      h('button', { class: 'alt', onclick: () => { if (confirm('Leave the game? This counts as a loss.')) act({ t: 'leaveRoom' }); } }, 'Leave')),
-    h('div', { class: 'table' }, opps, banner, center,
-      h('div', { class: 'log' }, g.log.slice(-3).map((l) => h('div', {}, l))),
-      timer, actions, hand),
-    h('div', { class: 'panel', style: 'margin-top:12px' }, chatBox(S.room)),
-    S.room.result ? h('div',{class:'panel',style:'margin-top:12px;text-align:center'},h('h2',{},S.room.result.winnerId===S.me.id?'🎉 You won!':S.room.result.winner+' wins'),
+  const timer = h('div', { class: 'game-timer', id: 'timer' });
+  const ownPlayer=h('div',{class:'own-player-bar'},
+    h('span',{class:'avatar own-game-avatar'},S.me.avatar||'🂡'),
+    h('div',{class:'own-player-copy'},h('strong',{},S.me.displayName||S.me.username),h('small',{},g.myTurn?'Your turn':g.hand.length+' cards in hand')),
+    h('span',{class:'own-hand-count'},g.hand.length+' cards'));
+  const titleBar=h('div',{class:'game-header'},
+    h('div',{class:'game-title-lockup'},h('span',{class:'brand-card'},'♠'),h('div',{},h('strong',{},S.room.name),h('small',{},S.room.ranked?'RANKED MATCH':'CASUAL MATCH'))),
+    h('button',{class:'leave-game-button',onclick:()=>{if(confirm('Leave the game? This counts as a loss.'))act({t:'leaveRoom'});}},'Leave'));
+  mount(h('div', { class: 'wrap app-shell game-screen' },
+    titleBar,
+    h('div',{class:'game-table-frame'},
+      h('div',{class:'game-table-felt'},opps,banner,center,
+        h('div',{class:'game-log'},g.log.slice(-2).map(l=>h('div',{},l))),
+        timer,actions,
+        h('div',{class:'your-hand-label'},'YOUR HAND'),
+        hand,ownPlayer)),
+    h('div', { class: 'panel game-chat-panel' }, h('div',{class:'section-heading'},h('h2',{},'Table chat')),chatBox(S.room)),
+    S.room.result ? h('div',{class:'panel game-result-panel'},h('h2',{},S.room.result.winnerId===S.me.id?'🎉 You won!':S.room.result.winner+' wins'),
       S.room.result.ranked ? h('div',{class:'muted'},'Ranked results saved · ratings updated') : h('div',{class:'muted'},S.room.result.tournament?'Tournament match completed · ratings unchanged':'Casual game · ratings unchanged'),
       S.room.aiGame ? h('button',{style:'margin-top:12px',onclick:()=>act({t:'rematchAI'})},'🤖 Play again') : (!S.room.tournament ? h('div',{style:'margin-top:12px'},h('button',{disabled:(S.room.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const r=await act({t:'rematch'});if(r.ok)toast(r.started?'Rematch started':'Rematch vote recorded ('+r.votes+'/'+r.required+')');}},(S.room.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch vs players'),h('div',{class:'muted',style:'margin-top:8px'},(S.room.rematchVotes||[]).length+' / '+S.room.members.length+' players want a rematch')):null),
-      h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null));
-  tick();
+      h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null,
+    bottomNav('home')));
 }
 function tick() {
   const t = $('timer');

@@ -97,7 +97,7 @@
   .player-link { color:#dce7f7; text-decoration:underline; text-underline-offset:3px; }
   .player-link:hover { color:#fff; filter:brightness(1.2); }
   .profile-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff1c; color:#fff; }
-  .avatar { width:42px; height:42px; display:inline-grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#455a78,#26374f); font-size:23px; flex:none; }
+  .avatar { width:42px; height:42px; display:inline-grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#455a78,#26374f); font-size:23px; flex:none; box-shadow:0 0 0 3px var(--avatar-ring,transparent); }
   .avatar.big { width:76px; height:76px; font-size:40px; }
   .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .xp-track { height:10px; border-radius:99px; background:#0d1520; overflow:hidden; border:1px solid #ffffff18; }
@@ -110,6 +110,12 @@
   .challenge:last-child { border-bottom:0; }
   .challenge-track { height:7px; border-radius:99px; background:#0d1520; overflow:hidden; margin-top:8px; }
   .challenge-track > div { height:100%; background:#72c9a5; border-radius:99px; }
+  .shop-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .shop-item { display:flex; flex-direction:column; gap:9px; min-height:205px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#101925; }
+  .shop-item-icon { display:grid; place-items:center; min-height:72px; border-radius:12px; background:linear-gradient(135deg,#273954,#172334); font-size:38px; }
+  .shop-item p { margin:0; color:var(--muted); font-size:12px; flex:1; }
+  .shop-wallet { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border-radius:16px; background:linear-gradient(110deg,#40371d,#252b36); border:1px solid #8b7541; }
+  @media(max-width:520px) { .shop-grid { grid-template-columns:1fr; } }
   .swatch { min-height:54px; border:2px solid #ffffff24; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-weight:650; }
   .swatch.active { outline:3px solid var(--accent); outline-offset:2px; }
   .screen-title { font-size:27px; font-weight:800; letter-spacing:-.04em; margin:8px 0 18px; }
@@ -159,6 +165,9 @@ let profileLoading = false;
 let progressionData = null;
 let progressionLoading = false;
 let progressionError = '';
+let shopData = null;
+let shopLoading = false;
+let shopError = '';
 async function loadProgression() {
   progressionLoading = true; progressionError = '';
   try {
@@ -169,6 +178,14 @@ async function loadProgression() {
   if (activeScreen === 'profile' && !profileTarget) render();
 }
 function showOwnProfile() { profileTarget = null; progressionData = null; progressionError = ''; activeScreen = 'profile'; render(); }
+async function loadShop() {
+  shopLoading = true; shopError = '';
+  try { const r = await api('/api/shop'); if (r.error) shopError = r.error; else shopData = r; }
+  catch (_) { shopError = 'Could not connect to the server.'; }
+  finally { shopLoading = false; applyShopEffects(); }
+  if (activeScreen === 'shop') render();
+}
+function showShop() { activeScreen = 'shop'; if (!shopData && !shopLoading) loadShop(); render(); }
 async function openPlayerProfile(id) {
   if (Number(id) === Number(S.me.id)) { showOwnProfile(); return; }
   else {
@@ -188,6 +205,22 @@ function applyTheme() {
   const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
   const backs={royal:'repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',ruby:'repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',forest:'repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',dark:'repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)'};
   root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); root.style.setProperty('--card-radius',tableTheme.cards==='sharp'?'4px':tableTheme.cards==='round'?'16px':'12px');
+  applyShopEffects();
+}
+function applyShopEffects() {
+  const root=document.documentElement;
+  const equipped=shopData?.equipped||{};
+  const items=shopData?.items||[];
+  const effectFor=(category)=>items.find(i=>i.id===equipped[category])?.effect;
+  const back=effectFor('card_back');
+  const backPatterns={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)'};
+  if(back && backPatterns[back]) root.style.setProperty('--back-pattern',backPatterns[back]);
+  const felt=effectFor('table_theme');
+  const felts={sakura:['#9d526f','#512b4b'],aurora:['#176b70','#123344']};
+  if(felt && felts[felt]) { const colors=felts[felt]; root.style.setProperty('--felt',colors[0]); root.style.setProperty('--felt2',colors[1]); root.style.setProperty('--table-pattern',`radial-gradient(ellipse at center,${colors[0]},${colors[1]})`); }
+  const frame=effectFor('avatar_frame');
+  const rings={flame:'#ff784e',ice:'#8bdcff',crown:'#f4cf68'};
+  root.style.setProperty('--avatar-ring',rings[frame]||'transparent');
 }
 applyTheme();
 let dismissed = Number(localStorage.getItem('mk_dismissed') || 0);
@@ -233,6 +266,7 @@ function connect() {
     if (m.t === 'state') {
       const prevTurn = S && S.game ? S.game.myTurn : false;
       S = m;
+      if (!shopData && !shopLoading) loadShop();
       sel = sel.filter((c) => S.game && S.game.hand.includes(c));
       if (!S.game || !S.game.myTurn) { sel = []; choose = null; sayMakao = false; }
       else if (!prevTurn) { try { navigator.vibrate && navigator.vibrate(60); } catch (_) {} }
@@ -292,8 +326,9 @@ function chatBox(room) {
 function topBar() {
   const me=S.me;
   return h('div', { class: 'bar' },
-    activeScreen === 'profile' || activeScreen === 'customize' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
+    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
+    activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🛍 Shop') : null,
     h('button', { class:'alt profile-chip', onclick:showOwnProfile }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
     h('button', { class: 'alt', onclick: logout, title:'Log out' }, '↗'));
 }
@@ -411,7 +446,37 @@ function bottomNav(active) {
   return h('nav',{class:'bottom-nav'},
     h('button',{onclick:()=>{activeScreen='home';render();}},h('span',{},'♣'),h('span',{},'Lobby')),
     h('button',{onclick:()=>{activeScreen='customize';render();}},h('span',{},'🎨'),h('span',{},'Table')),
+    h('button',{onclick:showShop},h('span',{},'🛍'),h('span',{},'Shop')),
     h('button',{onclick:showOwnProfile},h('span',{},'👤'),h('span',{},'Profile')));
+}
+
+function shopScreen() {
+  if (!shopData && !shopLoading) loadShop();
+  if (shopLoading && !shopData) {
+    mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel muted'},'Loading cosmetic shop…'),bottomNav('shop'))); return;
+  }
+  if (shopError && !shopData) {
+    mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel'},shopError,h('button',{class:'alt',onclick:loadShop},'Retry')),bottomNav('shop'))); return;
+  }
+  const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
+  const categories=[['card_back','Card backs'],['table_theme','Table themes'],['avatar_frame','Avatar frames']];
+  const content=[wallet,h('div',{class:'muted',style:'margin-top:10px'},'All items are cosmetic and never change cards, rules, odds or ratings. Real-money checkout is not enabled; this shop currently uses earnable coins.')];
+  for (const [category,title] of categories) {
+    const items=shopData.items.filter(i=>i.category===category);
+    const grid=h('div',{class:'shop-grid'});
+    for (const item of items) {
+      const action=async()=>{
+        const r=item.owned ? await api('/api/shop/equip',{cosmeticId:item.id}) : await api('/api/shop/buy',{cosmeticId:item.id});
+        if(r.error) return toast(r.error);
+        shopData=r.shop; applyShopEffects(); toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!'); render();
+      };
+      const label=item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
+      grid.append(h('article',{class:'shop-item'},h('div',{class:'shop-item-icon'},item.icon),h('strong',{},item.name),h('p',{},item.description),h('button',{class:item.equipped?'alt':'',disabled:item.equipped,onclick:action},label)));
+    }
+    content.push(h('section',{class:'panel',style:'margin-top:14px'},h('h2',{},title),grid));
+  }
+  content.push(h('div',{class:'panel muted',style:'margin-top:14px'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server.'));
+  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Cosmetic shop'),...content,bottomNav('shop')));
 }
 
 function profileScreen() {
@@ -609,6 +674,7 @@ function render() {
   if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
   if (activeScreen === 'profile') return profileScreen();
   if (activeScreen === 'customize') return customizeScreen();
+  if (activeScreen === 'shop') return shopScreen();
   if (S.game) return gameScreen();
   if (S.room) return roomScreen();
   lobbyScreen();

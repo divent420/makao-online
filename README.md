@@ -16,7 +16,7 @@ npm test
 
 Open http://localhost:3000 (or the `PORT` environment variable).
 
-## New in this build (v1.3.0)
+## New in this build (v1.4.0)
 
 - Mobile-first Android-inspired interface and responsive game table.
 - Editable player profiles: display name, avatar and short bio.
@@ -35,6 +35,10 @@ Open http://localhost:3000 (or the `PORT` environment variable).
 - Player progression: XP, levels, match-based streaks, achievements and daily challenges.
 - Recent match history with opponents, match type, result and XP earned.
 - Progression rewards are recorded transactionally with completed match records and are idempotent per player/game.
+- Cosmetic shop with server-side coin wallets, purchases and equipped items.
+- Cosmetic inventory includes premium card backs, table themes and avatar frames; cosmetics do not affect gameplay or rankings.
+- Players earn 10 coins for completing a human match plus 5 for a win; AI matches award half.
+- Cosmetic purchases are validated and debited atomically in SQLite. Real-money checkout is not enabled in this release.
 
 ## Updating an existing deployment
 
@@ -74,3 +78,13 @@ The suite covers core game rules, AI decisions, XP thresholds, achievement unloc
 - Achievements unlock for first match, first win, 10 matches, 10 wins, a three-win streak and an AI victory.
 - Player profiles show XP/level progress, streaks, daily challenges, achievements and the latest 20 matches.
 - Existing databases are migrated additively; existing accounts and match records are retained.
+
+
+## Cosmetic shop
+
+- Open **Shop** from the top bar or mobile navigation.
+- Coins are awarded automatically when a match finishes (10 for a human match, plus 5 for a win; AI practice earns half).
+- Purchases and equipment are stored server-side and shared across devices.
+- The initial catalog contains card backs, table themes and avatar frames.
+- The shop currently uses earnable in-game coins only. No real-money payment provider, paid currency, or checkout is configured.
+- The shop tables (`shop_wallets`, `cosmetics`, `user_cosmetics`, `user_equipped_cosmetics`) are created automatically and do not alter existing account or match data.

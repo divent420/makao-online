@@ -1,6 +1,6 @@
 {
   "name": "makao-online",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Free multiplayer Polish Makao card game with matchmaking, AI practice and player progression",
   "main": "server.js",

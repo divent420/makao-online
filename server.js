@@ -10,6 +10,7 @@ const { DatabaseSync } = require('node:sqlite');
 const M = require('./makao');
 const AI = require('./ai');
 const Progression = require('./progression');
+const Shop = require('./shop');
 
 const PORT = process.env.PORT || 3000;
 const TURN_MS = Number(process.env.TURN_MS) || 60000;          // time to act before auto-play
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS active_rooms(
   room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
 `);
 Progression.initialize(db);
+Shop.initialize(db);
 // Safe migrations for databases created by earlier versions.
 for (const [name, def] of [['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
@@ -267,6 +269,7 @@ function finishGame(room) {
       const won = players.indexOf(player) === st.winner;
       const opponents = players.filter(p => p.id !== player.id).map(p => p.name);
       Progression.awardProgress(db,player.id,gameId,won,!!room.aiGame,ranked,opponents,playedAt);
+      Shop.awardMatchCoins(db,player.id,won,!!room.aiGame,playedAt);
     }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
@@ -525,6 +528,32 @@ const server = http.createServer((req, res) => {
     const user = userByToken(req.headers['x-token']);
     if (!user) return send(res, 401, { error: 'Not signed in' });
     return send(res, 200, Progression.getProgression(db, user.id));
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/shop') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return send(res, 200, Shop.getShop(db, user.id));
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/shop/buy') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Shop.buy(db,user.id,m.cosmeticId);
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/shop/equip') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Shop.equip(db,user.id,m.cosmeticId);
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {

@@ -171,6 +171,20 @@
 
 
   /* Unified appearance shop: free styles and coin cosmetics share each category. */
+  .shop-option { display:grid !important; grid-template-columns:54px minmax(0,1fr); grid-template-rows:1fr; align-items:center; gap:9px; padding:8px !important; min-height:88px !important; }
+  .shop-visual { width:54px; height:68px; display:grid; place-items:center; border-radius:8px; overflow:hidden; flex:none; }
+  .shop-visual-card { border:3px solid #f5f2e9; background:repeating-linear-gradient(45deg,#243f86,#243f86 5px,#365bb0 5px,#365bb0 10px); box-shadow:0 3px 8px #0005; }
+  .shop-visual-card.premium { color:#fff; font-size:21px; }
+  .shop-visual-felt { height:54px; border:2px solid #ffffff55; background:radial-gradient(ellipse at center,#12634b,#073e31); box-shadow:inset 0 0 14px #0005; }
+  .shop-visual-frame { height:54px; border:2px solid #d6ad4e; border-radius:50%; background:#172f25; position:relative; color:#fff; font-size:24px; }
+  .shop-visual-frame i { position:absolute; right:-2px; bottom:-2px; font-style:normal; font-size:15px; }
+  .shop-option-info { min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .shop-option-info strong { font-size:12px; line-height:1.2; }
+  .shop-option-info p { font-size:10px !important; line-height:1.25; min-height:0 !important; margin:0; }
+  .shop-option-info button { justify-self:start; align-self:flex-start; min-height:27px; padding:4px 8px; margin-top:3px; font-size:10px; border-radius:8px; }
+  .shop-option.selected { border-color:var(--gold) !important; box-shadow:0 0 0 1px var(--gold) inset; }
+  @media(max-width:760px) { .shop-option { grid-template-columns:46px minmax(0,1fr); min-height:82px !important; } .shop-visual { width:46px; height:60px; } }
+
   .shop-note { margin:0 0 10px; }
   .shop-section { margin-top:12px !important; padding:13px !important; }
   .shop-section h2 { margin-bottom:10px; }
@@ -502,7 +516,7 @@ function applyTheme() {
   const root=document.documentElement;
   const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
   const backs={royal:'repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',ruby:'repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',forest:'repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',dark:'repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)'};
-  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); root.style.setProperty('--card-radius',tableTheme.cards==='sharp'?'4px':tableTheme.cards==='round'?'16px':'12px');
+  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); root.style.setProperty('--card-radius','12px');
   applyShopEffects();
 }
 function applyShopEffects() {
@@ -838,7 +852,7 @@ function shopScreen() {
   }
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
   const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
-  const content=[wallet,h('section',{class:'panel shop-section shop-preview-section'},h('h2',{},'Table preview'),preview),h('div',{class:'muted shop-note'},'Choose any appearance option below. Free styles and coin cosmetics live together in one place.')];
+  const content=[wallet,h('section',{class:'panel shop-section shop-preview-section'},h('h2',{},'Table preview'),preview)];
   const cardBacks=[
     {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
     {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
@@ -853,22 +867,21 @@ function shopScreen() {
     {id:'free-felt-midnight',name:'Midnight',icon:'🌑',free:true,selected:tableTheme.felt==='midnight',style:'background:linear-gradient(135deg,#343b46,#151c28)',apply:()=>{tableTheme.felt='midnight';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
   ];
   function appearanceCard(item,category) {
-    if(item.free) {
-      return h('article',{class:'shop-item appearance-option'+(item.selected?' selected':'')},
-        h('div',{class:'shop-item-icon',style:item.style||''},item.icon),
-        h('strong',{},item.name),
-        h('p',{},'Free style'),
-        h('button',{class:item.selected?'alt':'',disabled:item.selected,onclick:item.apply},item.selected?'Selected':'Use style'));
-    }
-    const action=async()=>{
+    const visual = category==='card_back'
+      ? h('div',{class:'shop-visual shop-visual-card '+(item.free?'':'premium'),style:item.style||''},item.free?'':item.icon)
+      : category==='table_theme'
+        ? h('div',{class:'shop-visual shop-visual-felt',style:item.style||''},'')
+        : h('div',{class:'shop-visual shop-visual-frame'},h('span',{},'🂡'),h('i',{},item.icon));
+    const selected=item.free?item.selected:item.equipped;
+    const action=item.free?item.apply:async()=>{
       const r=item.owned?await api('/api/shop/equip',{cosmeticId:item.id}):await api('/api/shop/buy',{cosmeticId:item.id});
       if(r.error)return toast(r.error);
       shopData=r.shop;freeAppearance[category]=false;saveFreeAppearance();applyShopEffects();toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!');render();
     };
-    const label=item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
-    return h('article',{class:'shop-item appearance-option'+(item.equipped?' selected':'')},
-      h('div',{class:'shop-item-icon'},item.icon),h('strong',{},item.name),h('p',{},item.description),
-      h('button',{class:item.equipped?'alt':'',disabled:item.equipped,onclick:action},label));
+    const label=item.free?(item.selected?'Selected':'Use'):item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
+    return h('article',{class:'shop-item appearance-option shop-option'+(selected?' selected':'')},
+      visual,h('div',{class:'shop-option-info'},h('strong',{},item.name),h('p',{},item.free?'Free style':item.description),
+      h('button',{class:selected?'alt':'',disabled:selected,onclick:action},label)));
   }
   const sections=[
     {title:'Card backs',category:'card_back',items:[...cardBacks,...shopData.items.filter(i=>i.category==='card_back')]},
@@ -880,13 +893,7 @@ function shopScreen() {
     section.items.forEach(item=>grid.append(appearanceCard(item,section.category)));
     content.push(h('section',{class:'panel shop-section'},h('h2',{},section.title),grid));
   }
-  const shapes=[
-    ['classic','Classic'],['round','Extra rounded'],['sharp','Sharp corners']
-  ];
-  const shapeGrid=h('div',{class:'shop-grid shape-grid'});
-  shapes.forEach(([id,label])=>shapeGrid.append(h('button',{class:'alt shape-option'+(tableTheme.cards===id?' selected':''),disabled:tableTheme.cards===id,onclick:()=>{tableTheme.cards=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
-  content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape'),shapeGrid,
-    h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};freeAppearance={};saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
+  content.push(h('div',{class:'panel muted shop-earn-note'},h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT,cards:'classic'};freeAppearance={};saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
   content.push(h('div',{class:'panel muted shop-earn-note'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server. All cosmetics are gameplay-neutral.'));
   mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Appearance'),...content,bottomNav('shop')));
 }

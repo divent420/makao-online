@@ -347,7 +347,7 @@ table td,table th{border-color:#ffffff18}
 .admin-players-panel,.admin-reports-panel { background:linear-gradient(145deg,#172f25,#11251d) !important; border-color:#315746 !important; }
 
 /* Stable timer slot: countdown text must never reflow the table. */
-.game-timer{display:flex;align-items:center;justify-content:center;width:112px;min-width:112px;height:27px;min-height:27px;box-sizing:border-box;flex:0 0 112px;margin:0 auto;padding:0 8px;font-size:11px;border:1px solid #b99a4c66;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
+.game-timer{display:flex;align-items:center;justify-content:center;width:88px;min-width:88px;height:23px;min-height:23px;box-sizing:border-box;flex:0 0 88px;margin:0 auto;padding:0 6px;font-size:10px;font-weight:750;border:1px solid #b99a4c55;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
 .game-table-felt{align-items:stretch;}
 .game-log{min-height:34px;max-height:34px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
 .rule-setting,.rule-settings,.rule-settings label{background:#172f25!important;border-color:#315746!important;color:#e8eee5!important;}
@@ -357,7 +357,7 @@ table td,table th{border-color:#ffffff18}
 .challenge-track{background:#0b2119!important;border-color:#315744!important;}
 .challenge-track>div{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
 .shop-preview-section .shop-preview{margin-top:8px;}
-  .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:1fr}.game-timer{width:104px;min-width:104px;flex-basis:104px;height:25px;min-height:25px}}
+  .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-match-button,.pass-play-button{min-height:62px;padding:10px 9px}.pass-play-button{gap:6px}.pass-play-button strong{font-size:12px}.pass-play-button small{font-size:9px}.game-timer{width:82px;min-width:82px;flex-basis:82px;height:22px;min-height:22px;font-size:9px}}
 </style>
 </head>
 <body>
@@ -1100,7 +1100,7 @@ function tick() {
   if (S?.room?.localGame) { if(t) t.textContent='Local game · no timer'; return; }
   if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }
   const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
-  t.textContent = S.game.myTurn ? 'Your turn · ' + s + 's' : s + 's';
+  t.textContent = S.game.myTurn ? s + 's · Your turn' : s + 's';
   t.style.color = S.game.myTurn && s <= 10 ? '#ff8a80' : '';
 }
 setInterval(tick, 500);

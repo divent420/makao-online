@@ -299,15 +299,15 @@ function replayScreen() {
   const playerRows=players.map((p,i)=>h('div',{class:'panel replay-player'+(i===st.turn&&st.winner==null?' replay-active':'')},
     h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},p.name),h('span',{class:'muted'},p.out?'Left':(p.hand||[]).length+' cards')),
     h('div',{class:'replay-hand'},(p.hand||[]).map(c=>cardEl(c)))));
-  const timeline=frames.slice(Math.max(0,replayStep-35),replayStep+1).map((frame,j)=>{
-    const absolute=Math.max(0,replayStep-35)+j, log=frame.log||[], msg=log.length?log[log.length-1]:'Game started';
+  const timeline=frames.map((frame,absolute)=>{
+    const log=frame.log||[], msg=log.length?log[log.length-1]:'Game started';
     return h('button',{class:'alt replay-move'+(absolute===replayStep?' selected':''),onclick:()=>{replayStep=absolute;render();}},absolute===0?'Start':('Step '+absolute+' · '+msg));
   });
   const top=(st.discard||[]).slice(-1)[0];
   const content=h('div',{class:'wrap'},topBar(),
     h('div',{class:'screen-title'},'Game replay #'+g.id),
     h('div',{class:'panel replay-summary'},
-      h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'🏆 '+(players[st.winner]?.name||'Game replay')),h('span',{class:'muted'},new Date(g.finished).toLocaleString())),
+      h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'🏆 '+(st.winner!=null?(players[st.winner]?.name||'Winner'):'Replay in progress')),h('span',{class:'muted'},new Date(g.finished).toLocaleString())),
       h('div',{class:'muted'},(g.players||[]).map(p=>p.name).join(' · ')),
       h('div',{class:'muted',style:'margin-top:4px'},'Step '+replayStep+' of '+Math.max(0,frames.length-1)+' · '+(current?current.name+' to play':'Game finished')),
       h('div',{class:'replay-progress'},h('div',{style:'width:'+pct+'%'}))),
@@ -324,7 +324,7 @@ function replayScreen() {
         h('button',{class:'alt',disabled:replayStep<=0,onclick:()=>{replayStep=Math.max(0,replayStep-1);render();}},'← Previous'),
         h('button',{disabled:replayStep>=frames.length-1,onclick:()=>{replayStep=Math.min(frames.length-1,replayStep+1);render();}},'Next →'),
         h('button',{class:'alt',disabled:replayStep>=frames.length-1,onclick:()=>{replayStep=frames.length-1;render();}},'⏭ End')),
-      h('input',{type:'range',min:0,max:Math.max(0,frames.length-1),value:replayStep,style:'width:100%;margin-top:12px',oninput:e=>{replayStep=Number(e.target.value);render();}})),
+      h('input',{type:'range',min:0,max:Math.max(0,frames.length-1),value:replayStep,style:'width:100%;margin-top:12px',onchange:e=>{replayStep=Number(e.target.value);render();}})),
     h('div',{class:'panel',style:'margin-top:12px'},h('h2',{},'Move history'),h('div',{class:'replay-timeline'},timeline)),
     h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{if(replayTimer)clearInterval(replayTimer);replayTimer=null;activeScreen='home';replayData=null;render();}},'← Back to lobby'));
   mount(content);
@@ -414,11 +414,12 @@ async function auth(kind) {
   const username = $('u').value, password = $('p').value;
   const r = await api('/api/' + kind, { username, password });
   if (r.error) { authErr = r.error; return render(); }
-  token = r.token; localStorage.setItem('mk_token', token); authErr = '';
+  token = r.token; localStorage.setItem('mk_token', token); authErr = ''; gameHistoryData=null; gameHistoryLoadedAt=0;
   connect();
 }
 async function logout() {
   await api('/api/logout', {});
+  gameHistoryData=null; gameHistoryLoadedAt=0; replayData=null;
   localStorage.removeItem('mk_token'); token = null; S = null;
   if (es) es.close();
   render();

@@ -257,7 +257,7 @@ function restoreRooms() {
         userRoom.set(id, room.id);
         dcTimers.set(id, setTimeout(() => { if (!online.has(id)) leaveRoom(id); }, room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS));
       }
-      if (room.game && room.game.winner == null) armTimer(room, true);
+      if (room.game && room.game.winner == null && !room.localGame) armTimer(room, true);
       else persistRoom(room);
     } catch (error) {
       console.warn('Discarding invalid active room snapshot:', row.room_id, error.message);
@@ -277,6 +277,7 @@ function finishGame(room) {
   const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
   const playedAt = Date.now();
   const result = { id: playedAt, ranked, tournament: !!room.tournamentId, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
+  if (!room.localGame) {
   db.exec('BEGIN');
   try {
     humanRows.forEach((u, i) => {
@@ -305,6 +306,7 @@ function finishGame(room) {
     }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
+  }
   if (room.tournamentId && result.winnerId > 0) {
     const advanced = Tournaments.completeMatch(db, room.tournamentId, room.tournamentMatchId, result.winnerId, playedAt);
     if (advanced.error) console.warn('Tournament advancement failed:', advanced.error);

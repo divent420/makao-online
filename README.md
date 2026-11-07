@@ -107,26 +107,18 @@ The suite covers core game rules, AI decisions, XP thresholds, achievement unloc
 - Brackets, match status and active tournament match metadata are stored in SQLite and active matches use the existing room snapshot recovery.
 
 
-## Moderation and operations (v1.6.0)
+## Moderation and operations (v1.6.1)
 
-- Set `ADMIN_USERNAME` to an existing account's username when starting the server to grant that account administrator access. Register the account first, stop the server, then restart with the environment variable set. Admin access is tied to normal authenticated sessions; there is no shared admin password or public admin registration route.
+- **The first account registered on a fresh database automatically becomes the administrator.** No Render environment variable is required. All later registrations are regular players. Admin access is tied to normal authenticated sessions; there is no shared admin password or public admin registration route.
 - Administrators see **Admin** in the top bar and can review reports, mark them as reviewing, resolve or dismiss them, and attach a moderator note. The report queue is available only to authenticated administrator accounts.
 - Player reports are limited to five per reporter in a rolling ten-minute window.
 - `/health` returns a minimal service health response and process uptime for external monitoring.
 - Gameplay actions are rate-limited to 24 requests per player per two-second window. The server remains authoritative for turn order, card ownership and legal moves.
 - Existing databases are migrated additively: admin and report-review fields are added without deleting player or game data.
 
-Example (Linux/macOS):
-
-```sh
-ADMIN_USERNAME=youradminusername npm start
-```
-
-PowerShell:
-
-```powershell
-$env:ADMIN_USERNAME = "youradminusername"
-npm start
-```
-
 Do not expose the service publicly without HTTPS, secure hosting, regular database backups and a trusted administrator account. The health endpoint is intentionally minimal; this phase does not yet include external alerting, automated account suspensions, or a full anti-cheat analytics system.
+
+
+### First administrator
+
+On a brand-new database, the first successful registration is atomically assigned administrator privileges. The database insert itself checks whether any user exists, so concurrent registrations cannot both become administrators. On an existing database with no administrator, startup safely promotes the oldest existing account. If the database is empty, the first successful registration becomes administrator. Existing administrator assignments are preserved.

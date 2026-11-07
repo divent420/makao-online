@@ -13,6 +13,7 @@ const Progression = require('./progression');
 const Shop = require('./shop');
 const Social = require('./social');
 const Tournaments = require('./tournaments');
+const { ensureExistingFirstAdmin, insertUserWithFirstAdmin } = require('./admin-bootstrap');
 
 const PORT = process.env.PORT || 3000;
 const TURN_MS = Number(process.env.TURN_MS) || 60000;          // time to act before auto-play
@@ -45,7 +46,6 @@ CREATE TABLE IF NOT EXISTS games(
 CREATE TABLE IF NOT EXISTS active_rooms(
   room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
 `);
-if (process.env.ADMIN_USERNAME) db.prepare('UPDATE users SET is_admin=1 WHERE username=? COLLATE NOCASE').run(process.env.ADMIN_USERNAME.trim());
 Progression.initialize(db);
 Shop.initialize(db);
 Social.initialize(db);
@@ -55,9 +55,10 @@ for (const [name, def] of [['is_admin', 'INTEGER NOT NULL DEFAULT 0'], ['display
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
   if (!cols.includes(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${def}`);
 }
+// Preserve existing accounts: if no admin exists yet, promote the oldest account.
+ensureExistingFirstAdmin(db);
 
 const q = {
-  insUser: db.prepare('INSERT INTO users(username,salt,hash,created) VALUES(?,?,?,?)'),
   byName: db.prepare('SELECT * FROM users WHERE username=?'),
   byId: db.prepare('SELECT * FROM users WHERE id=?'),
   insSession: db.prepare('INSERT INTO sessions(token,user_id,created) VALUES(?,?,?)'),
@@ -84,7 +85,7 @@ function register(username, password) {
   if (password.length < 6 || password.length > 100) return { error: 'Password must be 6-100 characters' };
   const salt = crypto.randomBytes(16).toString('hex');
   try {
-    const r = q.insUser.run(username, salt, hashPw(password, salt), Date.now());
+    const r = insertUserWithFirstAdmin(db, username, salt, hashPw(password, salt), Date.now());
     return { user: q.byId.get(Number(r.lastInsertRowid)) };
   } catch (e) {
     if (/UNIQUE/i.test(String(e.message))) return { error: 'That username is taken' };

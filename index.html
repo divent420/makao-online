@@ -100,6 +100,16 @@
   .avatar { width:42px; height:42px; display:inline-grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#455a78,#26374f); font-size:23px; flex:none; }
   .avatar.big { width:76px; height:76px; font-size:40px; }
   .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .xp-track { height:10px; border-radius:99px; background:#0d1520; overflow:hidden; border:1px solid #ffffff18; }
+  .xp-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#6f9cff,#72e0b2); }
+  .achievement { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .achievement:last-child { border-bottom:0; }
+  .achievement.locked { opacity:.48; filter:grayscale(.8); }
+  .achievement-icon { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:#ffffff12; font-size:21px; flex:none; }
+  .challenge { padding:12px 0; border-bottom:1px solid var(--line); }
+  .challenge:last-child { border-bottom:0; }
+  .challenge-track { height:7px; border-radius:99px; background:#0d1520; overflow:hidden; margin-top:8px; }
+  .challenge-track > div { height:100%; background:#72c9a5; border-radius:99px; }
   .swatch { min-height:54px; border:2px solid #ffffff24; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-weight:650; }
   .swatch.active { outline:3px solid var(--accent); outline-offset:2px; }
   .screen-title { font-size:27px; font-weight:800; letter-spacing:-.04em; margin:8px 0 18px; }
@@ -146,8 +156,21 @@ let activeScreen = 'home';
 let profileAvatar = null;
 let profileTarget = null; // null means edit my own profile; object means read-only public profile
 let profileLoading = false;
+let progressionData = null;
+let progressionLoading = false;
+let progressionError = '';
+async function loadProgression() {
+  progressionLoading = true; progressionError = '';
+  try {
+    const r = await api('/api/progression');
+    if (r.error) progressionError = r.error; else progressionData = r;
+  } catch (_) { progressionError = 'Could not connect to the server.'; }
+  finally { progressionLoading = false; }
+  if (activeScreen === 'profile' && !profileTarget) render();
+}
+function showOwnProfile() { profileTarget = null; progressionData = null; progressionError = ''; activeScreen = 'profile'; render(); }
 async function openPlayerProfile(id) {
-  if (Number(id) === Number(S.me.id)) { profileTarget = null; }
+  if (Number(id) === Number(S.me.id)) { showOwnProfile(); return; }
   else {
     profileTarget = { loading: true }; profileLoading = true; activeScreen = 'profile'; render();
     const r = await api('/api/players/' + encodeURIComponent(id));
@@ -271,7 +294,7 @@ function topBar() {
   return h('div', { class: 'bar' },
     activeScreen === 'profile' || activeScreen === 'customize' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
-    h('button', { class:'alt profile-chip', onclick:()=>{profileTarget=null;activeScreen='profile';render();} }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
+    h('button', { class:'alt profile-chip', onclick:showOwnProfile }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
     h('button', { class: 'alt', onclick: logout, title:'Log out' }, '↗'));
 }
 const DEFAULTS = {
@@ -388,7 +411,7 @@ function bottomNav(active) {
   return h('nav',{class:'bottom-nav'},
     h('button',{onclick:()=>{activeScreen='home';render();}},h('span',{},'♣'),h('span',{},'Lobby')),
     h('button',{onclick:()=>{activeScreen='customize';render();}},h('span',{},'🎨'),h('span',{},'Table')),
-    h('button',{onclick:()=>{activeScreen='profile';render();}},h('span',{},'👤'),h('span',{},'Profile')));
+    h('button',{onclick:showOwnProfile},h('span',{},'👤'),h('span',{},'Profile')));
 }
 
 function profileScreen() {
@@ -396,6 +419,7 @@ function profileScreen() {
     mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel muted'},'Loading player profile…'),bottomNav('profile'))); return;
   }
   const viewing = !!profileTarget;
+  if (!viewing && !progressionData && !progressionLoading) loadProgression();
   const me = viewing ? profileTarget : S.me;
   if (!viewing && profileAvatar === null) profileAvatar = me.avatar || '🂡';
   const avatar = viewing ? (me.avatar||'🂡') : (profileAvatar||me.avatar||'🂡');
@@ -405,7 +429,38 @@ function profileScreen() {
     h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Player statistics'),stats,h('h2',{style:'margin-top:20px'},'About'),h('div',{style:'white-space:pre-wrap;line-height:1.5'},me.bio||'This player has not added a bio yet.'))
   ];
   if (!viewing) {
-    const avatars=['🂡','😎','🦊','🐺','🐱','🐼','🐸','👑','🔥','🎯','🦄','🐉'];
+    const data = progressionData;
+    if (progressionLoading && !data) {
+      children.push(h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Progression'),'Loading your progress…'));
+    } else if (data) {
+      const p = data.progress;
+      const pct = Math.max(0,Math.min(100,Math.round(p.xpIntoLevel / p.xpForNextLevel * 100)));
+      const progressPanel = h('div',{class:'panel',style:'margin-top:14px'},
+        h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('h2',{},'Progression'),h('strong',{},'Level '+p.level)),
+        h('div',{class:'row',style:'justify-content:space-between;margin:8px 0'},h('strong',{},p.xp+' XP'),h('span',{class:'muted'},p.xpIntoLevel+' / '+p.xpForNextLevel+' XP to next level')),
+        h('div',{class:'xp-track'},h('div',{class:'xp-fill',style:'width:'+pct+'%'})),
+        h('div',{class:'settings-grid',style:'margin-top:14px'},[['Completed',p.totalGames],['Progression wins',p.totalWins],['Current streak',p.currentStreak],['Best streak',p.bestStreak]].map(([k,v])=>h('div',{style:'text-align:center;padding:8px;background:#ffffff08;border-radius:12px'},h('div',{style:'font-size:21px;font-weight:800'},v),h('div',{class:'muted'},k)))));
+      const challenges = h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Daily challenges'));
+      data.dailyChallenges.forEach(c=>{
+        const pctDone = Math.round(c.progress/c.goal*100);
+        challenges.append(h('div',{class:'challenge'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},c.title),h('span',{class:c.completed?'pos':'muted'},c.completed?'✓ Complete':'+'+c.reward+' XP')),h('div',{class:'muted'},c.description+' · '+c.progress+'/'+c.goal),h('div',{class:'challenge-track'},h('div',{style:'width:'+pctDone+'%'}))));
+      });
+      const achievements = h('div',{class:'panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Achievements'),h('span',{class:'muted'},data.achievements.filter(a=>a.unlockedAt).length+'/'+data.achievements.length+' unlocked')));
+      data.achievements.forEach(a=>achievements.append(h('div',{class:'achievement'+(a.unlockedAt?'':' locked')},h('div',{class:'achievement-icon'},a.icon),h('div',{class:'grow'},h('strong',{},a.title),h('div',{class:'muted'},a.description)),h('span',{class:'muted'},a.unlockedAt?'✓':'+'+a.xpReward+' XP'))));
+      const history = h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Recent matches'));
+      if (!data.history.length) history.append(h('div',{class:'muted'},'Your completed matches will appear here.'));
+      data.history.forEach(m=>{
+        history.append(h('div',{class:'row',style:'justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)'},
+          h('div',{class:'grow'},h('strong',{class:m.result==='win'?'pos':''},m.result==='win'?'Victory':'Defeat'),h('div',{class:'muted'},(m.aiGame?'AI practice':'Player match')+' · '+m.opponents.join(', ')),h('div',{class:'muted'},new Date(m.playedAt).toLocaleDateString())),
+          h('div',{style:'text-align:right'},h('strong',{},'+'+m.xpEarned+' XP'),h('div',{class:'muted'},m.ranked?'Ranked':'Casual'))));
+      });
+      children.push(progressPanel,challenges,achievements,history);
+    } else if (!progressionLoading) {
+      children.push(h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Progression'),progressionError||'Progress data could not be loaded. Reopen your profile to retry.',h('button',{class:'alt',style:'margin-top:10px',onclick:()=>{progressionData=null;loadProgression();}},'Retry')));
+    }
+  }
+  if (!viewing) {
+    const avatars=['🂡' ,'😎','🦊','🐺','🐱','🐼','🐸','👑','🔥','🎯','🦄','🐉'];
     const nameInput=h('input',{id:'profileName',maxlength:20,value:me.displayName||me.username,style:'width:100%'});
     const bioInput=h('input',{id:'profileBio',maxlength:80,value:me.bio||'',placeholder:'A little about you',style:'width:100%'});
     const save=async()=>{const r=await api('/api/profile',{displayName:$('profileName').value,bio:$('profileBio').value,avatar:profileAvatar});if(r.error)return toast(r.error);S.me=r.user;profileAvatar=r.user.avatar;toast('Profile saved');activeScreen='profile';render();};
@@ -532,7 +587,7 @@ function gameScreen() {
 
   const timer = h('div', { class: 'muted', id: 'timer', style: 'text-align:center' });
   mount(h('div', { class: 'wrap' },
-    h('div', { class: 'bar' }, h('h1', {}, '🂡 Makao · ' + S.room.name + (S.room.ranked ? '' : ' · casual')), h('button', { class:'alt profile-chip', onclick:()=>{profileTarget=null;activeScreen='profile';render();} }, (S.me.avatar||'🂡')+' '+(S.me.displayName||S.me.username)),
+    h('div', { class: 'bar' }, h('h1', {}, '🂡 Makao · ' + S.room.name + (S.room.ranked ? '' : ' · casual')), h('button', { class:'alt profile-chip', onclick:showOwnProfile }, (S.me.avatar||'🂡')+' '+(S.me.displayName||S.me.username)),
       h('button', { class: 'alt', onclick: () => { if (confirm('Leave the game? This counts as a loss.')) act({ t: 'leaveRoom' }); } }, 'Leave')),
     h('div', { class: 'table' }, opps, banner, center,
       h('div', { class: 'log' }, g.log.slice(-3).map((l) => h('div', {}, l))),

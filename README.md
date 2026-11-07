@@ -16,7 +16,7 @@ npm test
 
 Open http://localhost:3000 (or the `PORT` environment variable).
 
-## New in this build
+## New in this build (v1.3.0)
 
 - Mobile-first Android-inspired interface and responsive game table.
 - Editable player profiles: display name, avatar and short bio.
@@ -32,6 +32,9 @@ Open http://localhost:3000 (or the `PORT` environment variable).
 - Solo practice supports one to three rule-based AI opponents with easy, normal and hard difficulty. AI matches are casual and do not change Elo or ranked player statistics.
 - AI decisions are isolated in `ai.js` and all moves are validated by the existing Makao engine.
 - AI practice supports rematches without returning to the lobby.
+- Player progression: XP, levels, match-based streaks, achievements and daily challenges.
+- Recent match history with opponents, match type, result and XP earned.
+- Progression rewards are recorded transactionally with completed match records and are idempotent per player/game.
 
 ## Updating an existing deployment
 
@@ -61,4 +64,13 @@ Requires Node.js 22 or newer because it uses the built-in `node:sqlite` module. 
 npm test
 ```
 
-The suite covers core game rules and AI decisions. The release was also smoke-tested with two authenticated users entering Quick Match and a third user starting a game with two AI opponents; an AI turn was observed automatically.
+The suite covers core game rules, AI decisions, XP thresholds, achievement unlocks, daily challenge rewards, streak tracking and progression-history idempotency. The release was also smoke-tested with two authenticated users entering Quick Match and a third user starting a game with two AI opponents; an AI turn was observed automatically.
+
+## Player progression
+
+- Every completed human match grants XP. Casual AI practice grants less XP than player matches; AI games never affect Elo.
+- Levels use increasing XP thresholds (100 XP for level 2, then +50 XP per subsequent level).
+- Daily challenges reset at 00:00 UTC and award bonus XP once per challenge per day.
+- Achievements unlock for first match, first win, 10 matches, 10 wins, a three-win streak and an AI victory.
+- Player profiles show XP/level progress, streaks, daily challenges, achievements and the latest 20 matches.
+- Existing databases are migrated additively; existing accounts and match records are retained.

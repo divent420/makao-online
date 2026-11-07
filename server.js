@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 const M = require('./makao');
 const AI = require('./ai');
+const Progression = require('./progression');
 
 const PORT = process.env.PORT || 3000;
 const TURN_MS = Number(process.env.TURN_MS) || 60000;          // time to act before auto-play
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS games(
 CREATE TABLE IF NOT EXISTS active_rooms(
   room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
 `);
+Progression.initialize(db);
 // Safe migrations for databases created by earlier versions.
 for (const [name, def] of [['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
@@ -60,6 +62,8 @@ const q = {
   delRoom: db.prepare('DELETE FROM active_rooms WHERE room_id=?'),
   activeRooms: db.prepare('SELECT room_id,snapshot FROM active_rooms ORDER BY updated'),
 };
+
+
 
 // ---------- accounts ----------
 const hashPw = (pw, salt) => crypto.scryptSync(pw, salt, 64).toString('hex');
@@ -240,11 +244,11 @@ function finishGame(room) {
   clearTimeout(room.timer);
   const st = room.game;
   const players = st.players;
-  const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id));
-  // AI matches are always casual: bots never affect competitive ratings or player stats.
+  const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
   const ranked = !room.aiGame && M.isRanked(room.rules);
   const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
-  const result = { id: Date.now(), ranked, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
+  const playedAt = Date.now();
+  const result = { id: playedAt, ranked, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
   db.exec('BEGIN');
   try {
     humanRows.forEach((u, i) => {
@@ -257,13 +261,18 @@ function finishGame(room) {
       } else result.rows.push({ username: u.username, delta: 0, rating: u.rating, won });
     });
     for (const bot of players.filter(p => p.id < 0)) result.rows.push({ username: bot.name, delta: 0, rating: 0, won: players.indexOf(bot) === st.winner });
-    q.insGame.run(Date.now(), result.winnerId, JSON.stringify({ ranked, rules: room.rules, rows: result.rows }));
+    const gameInsert = q.insGame.run(playedAt, result.winnerId, JSON.stringify({ ranked, aiGame: !!room.aiGame, rules: room.rules, rows: result.rows }));
+    const gameId = Number(gameInsert.lastInsertRowid);
+    for (const player of players.filter(p => p.id > 0)) {
+      const won = players.indexOf(player) === st.winner;
+      const opponents = players.filter(p => p.id !== player.id).map(p => p.name);
+      Progression.awardProgress(db,player.id,gameId,won,!!room.aiGame,ranked,opponents,playedAt);
+    }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
   room.result = result;
   room.game = null;
 }
-
 function afterAction(room) {
   if (room.game && room.game.winner != null) finishGame(room);
   else armTimer(room);
@@ -510,6 +519,12 @@ const server = http.createServer((req, res) => {
     const t = req.headers['x-token'];
     if (t) { const u = userByToken(t); if (u) matchmakingQueue.delete(u.id); q.delToken.run(String(t)); }
     return send(res, 200, { ok: true });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/progression') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return send(res, 200, Progression.getProgression(db, user.id));
   }
 
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {

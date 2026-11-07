@@ -145,7 +145,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, game: room.game, gameHistory: room.gameHistory || [], lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };

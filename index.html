@@ -271,6 +271,8 @@ async function openPlayerProfile(id) {
 function goBack() { activeScreen = 'home'; profileTarget = null; profileAvatar = null; render(); }
 const THEME_DEFAULT = { felt:'emerald', back:'royal', cards:'classic' };
 let tableTheme = { ...THEME_DEFAULT, ...JSON.parse(localStorage.getItem('mk_theme') || '{}') };
+let freeAppearance = JSON.parse(localStorage.getItem('mk_free_appearance') || '{}');
+function saveFreeAppearance() { localStorage.setItem('mk_free_appearance', JSON.stringify(freeAppearance)); }
 function applyTheme() {
   const root=document.documentElement;
   const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
@@ -285,10 +287,10 @@ function applyShopEffects() {
   const effectFor=(category)=>items.find(i=>i.id===equipped[category])?.effect;
   const back=effectFor('card_back');
   const backPatterns={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)'};
-  if(back && backPatterns[back]) root.style.setProperty('--back-pattern',backPatterns[back]);
+  if(back && backPatterns[back] && !freeAppearance.card_back) root.style.setProperty('--back-pattern',backPatterns[back]);
   const felt=effectFor('table_theme');
   const felts={sakura:['#9d526f','#512b4b'],aurora:['#176b70','#123344']};
-  if(felt && felts[felt]) { const colors=felts[felt]; root.style.setProperty('--felt',colors[0]); root.style.setProperty('--felt2',colors[1]); root.style.setProperty('--table-pattern',`radial-gradient(ellipse at center,${colors[0]},${colors[1]})`); }
+  if(felt && felts[felt] && !freeAppearance.table_theme) { const colors=felts[felt]; root.style.setProperty('--felt',colors[0]); root.style.setProperty('--felt2',colors[1]); root.style.setProperty('--table-pattern',`radial-gradient(ellipse at center,${colors[0]},${colors[1]})`); }
   const frame=effectFor('avatar_frame');
   const rings={flame:'#ff784e',ice:'#8bdcff',crown:'#f4cf68'};
   root.style.setProperty('--avatar-ring',rings[frame]||'transparent');
@@ -581,17 +583,17 @@ function shopScreen() {
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
   const content=[wallet,h('div',{class:'muted shop-note'},'Choose any appearance option below. Free styles and coin cosmetics live together in one place.')];
   const cardBacks=[
-    {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-back-forest',name:'Forest',icon:'🌲',free:true,selected:tableTheme.back==='forest',style:'background:repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',apply:()=>{tableTheme.back='forest';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-back-dark',name:'Graphite',icon:'⚫',free:true,selected:tableTheme.back==='dark',style:'background:repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)',apply:()=>{tableTheme.back='dark';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
+    {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-forest',name:'Forest',icon:'🌲',free:true,selected:tableTheme.back==='forest',style:'background:repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',apply:()=>{tableTheme.back='forest';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-dark',name:'Graphite',icon:'⚫',free:true,selected:tableTheme.back==='dark',style:'background:repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)',apply:()=>{tableTheme.back='dark';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
   ];
   const tableThemes=[
-    {id:'free-felt-emerald',name:'Emerald',icon:'🌿',free:true,selected:tableTheme.felt==='emerald',style:'background:linear-gradient(135deg,#12634b,#073e31)',apply:()=>{tableTheme.felt='emerald';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-felt-blue',name:'Ocean',icon:'🌊',free:true,selected:tableTheme.felt==='blue',style:'background:linear-gradient(135deg,#174d83,#102d50)',apply:()=>{tableTheme.felt='blue';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-felt-purple',name:'Royal',icon:'🔮',free:true,selected:tableTheme.felt==='purple',style:'background:linear-gradient(135deg,#553b79,#2b1e46)',apply:()=>{tableTheme.felt='purple';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-felt-red',name:'Burgundy',icon:'♦',free:true,selected:tableTheme.felt==='red',style:'background:linear-gradient(135deg,#783c3e,#401e29)',apply:()=>{tableTheme.felt='red';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
-    {id:'free-felt-midnight',name:'Midnight',icon:'🌑',free:true,selected:tableTheme.felt==='midnight',style:'background:linear-gradient(135deg,#343b46,#151c28)',apply:()=>{tableTheme.felt='midnight';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
+    {id:'free-felt-emerald',name:'Emerald',icon:'🌿',free:true,selected:tableTheme.felt==='emerald',style:'background:linear-gradient(135deg,#12634b,#073e31)',apply:()=>{tableTheme.felt='emerald';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-blue',name:'Ocean',icon:'🌊',free:true,selected:tableTheme.felt==='blue',style:'background:linear-gradient(135deg,#174d83,#102d50)',apply:()=>{tableTheme.felt='blue';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-purple',name:'Royal',icon:'🔮',free:true,selected:tableTheme.felt==='purple',style:'background:linear-gradient(135deg,#553b79,#2b1e46)',apply:()=>{tableTheme.felt='purple';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-red',name:'Burgundy',icon:'♦',free:true,selected:tableTheme.felt==='red',style:'background:linear-gradient(135deg,#783c3e,#401e29)',apply:()=>{tableTheme.felt='red';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-midnight',name:'Midnight',icon:'🌑',free:true,selected:tableTheme.felt==='midnight',style:'background:linear-gradient(135deg,#343b46,#151c28)',apply:()=>{tableTheme.felt='midnight';freeAppearance.table_theme=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
   ];
   function appearanceCard(item,category) {
     if(item.free) {
@@ -604,7 +606,7 @@ function shopScreen() {
     const action=async()=>{
       const r=item.owned?await api('/api/shop/equip',{cosmeticId:item.id}):await api('/api/shop/buy',{cosmeticId:item.id});
       if(r.error)return toast(r.error);
-      shopData=r.shop;applyShopEffects();toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!');render();
+      shopData=r.shop;freeAppearance[category]=false;saveFreeAppearance();applyShopEffects();toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!');render();
     };
     const label=item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
     return h('article',{class:'shop-item appearance-option'+(item.equipped?' selected':'')},
@@ -628,7 +630,7 @@ function shopScreen() {
   shapes.forEach(([id,label])=>shapeGrid.append(h('button',{class:'alt shape-option'+(tableTheme.cards===id?' selected':''),disabled:tableTheme.cards===id,onclick:()=>{tableTheme.cards=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
   const preview=h('div',{class:'shop-preview'},h('div',{class:'row',style:'gap:10px;justify-content:center'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'})));
   content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape & preview'),shapeGrid,preview,
-    h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
+    h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};freeAppearance={};saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
   content.push(h('div',{class:'panel muted shop-earn-note'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server. All cosmetics are gameplay-neutral.'));
   mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Appearance'),...content,bottomNav('shop')));
 }

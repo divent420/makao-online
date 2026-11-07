@@ -21,8 +21,9 @@ const SUITS = ['S', 'H', 'D', 'C'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const DEMAND_RANKS = ['5', '6', '7', '8', '9', '10'];
 
-const rank = (c) => c.slice(0, -1);
-const suit = (c) => c.slice(-1);
+const cardParts = (c) => String(c).match(/^(.+?)([SHDC])(?:~\\d+)?$/);
+const rank = (c) => cardParts(c)?.[1] || String(c).slice(0, -1);
+const suit = (c) => cardParts(c)?.[2] || String(c).slice(-1);
 
 // Table rules. The host can change these before a game starts. A game played with any
 // rule other than the defaults is "casual" and does not change ratings (turnSeconds excepted).
@@ -74,7 +75,7 @@ function shuffle(a) {
 function fullDeck(deckCount = 1) {
   const d = [];
   for (let pack = 0; pack < deckCount; pack++)
-    for (const s of SUITS) for (const r of RANKS) d.push(r + s);
+    for (const s of SUITS) for (const r of RANKS) d.push(r + s + (pack ? '~' + (pack + 1) : ''));
   return shuffle(d);
 }
 

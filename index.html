@@ -168,6 +168,10 @@ let progressionError = '';
 let shopData = null;
 let shopLoading = false;
 let shopError = '';
+let socialData = null;
+let socialLoading = false;
+let socialError = '';
+let tournamentData = null;
 async function loadProgression() {
   progressionLoading = true; progressionError = '';
   try {
@@ -186,6 +190,17 @@ async function loadShop() {
   if (activeScreen === 'shop') render();
 }
 function showShop() { activeScreen = 'shop'; if (!shopData && !shopLoading) loadShop(); render(); }
+async function loadSocial() {
+  socialLoading = true; socialError = '';
+  try {
+    const [friends, cups] = await Promise.all([api('/api/social'), api('/api/tournaments')]);
+    if (friends.error) socialError = friends.error; else socialData = friends;
+    if (!cups.error) tournamentData = cups;
+  } catch (_) { socialError = 'Could not connect to the server.'; }
+  finally { socialLoading = false; }
+  if (activeScreen === 'social') render();
+}
+function showSocial() { activeScreen = 'social'; loadSocial(); render(); }
 async function openPlayerProfile(id) {
   if (Number(id) === Number(S.me.id)) { showOwnProfile(); return; }
   else {
@@ -326,9 +341,10 @@ function chatBox(room) {
 function topBar() {
   const me=S.me;
   return h('div', { class: 'bar' },
-    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
+    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' || activeScreen === 'social' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
     activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🛍 Shop') : null,
+    activeScreen !== 'social' ? h('button',{class:'alt',onclick:showSocial},'👥 Social') : null,
     h('button', { class:'alt profile-chip', onclick:showOwnProfile }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
     h('button', { class: 'alt', onclick: logout, title:'Log out' }, '↗'));
 }
@@ -401,6 +417,52 @@ function authScreen() {
     h('div', { class: 'muted', style: 'text-align:center' }, 'Username 3-16 letters/digits/_, password 6+ chars')));
 }
 
+function socialScreen() {
+  if (!socialData && !socialLoading) loadSocial();
+  const children=[topBar(),h('div',{class:'screen-title'},'Friends & community')];
+  if (socialError && !socialData) children.push(h('div',{class:'panel'},socialError,h('button',{class:'alt',onclick:loadSocial},'Retry')));
+  if (!socialData) children.push(h('div',{class:'panel muted'},'Loading friends…'));
+  else {
+    const requestInput=h('input',{id:'friendUsername',placeholder:'Enter a username',maxlength:16,style:'flex:1;min-width:0'});
+    children.push(h('div',{class:'panel'},h('h2',{},'Add a friend'),h('div',{class:'row'},requestInput,h('button',{onclick:async()=>{const name=$('friendUsername').value.trim();if(!name)return toast('Enter a username');const r=await api('/api/friends/request',{username:name});if(r.error)return toast(r.error);$('friendUsername').value='';toast('Friend request sent');await loadSocial();}},'Send request'))));
+    const requests=h('div',{class:'panel',style:'margin-top:12px'},h('h2',{},'Friend requests'));
+    if(!socialData.incoming.length) requests.append(h('div',{class:'muted'},'No incoming requests.'));
+    socialData.incoming.forEach(x=>requests.append(h('div',{class:'row',style:'justify-content:space-between;padding:8px 0'},h('div',{class:'grow'},h('strong',{},(x.user.avatar||'🂡')+' '+x.user.displayName),h('div',{class:'muted'},'@'+x.user.username)),h('button',{onclick:async()=>{const r=await api('/api/friends/respond',{requestId:x.id,accept:true});if(r.error)return toast(r.error);await loadSocial();}},'Accept'),h('button',{class:'alt',onclick:async()=>{await api('/api/friends/respond',{requestId:x.id,accept:false});await loadSocial();}},'Decline'))));
+    if(socialData.outgoing.length) requests.append(h('div',{class:'muted',style:'margin-top:8px'},'Pending: '+socialData.outgoing.map(x=>x.username).join(', ')));
+    children.push(requests);
+    const friends=h('div',{class:'panel',style:'margin-top:12px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Your friends'),h('button',{class:'alt',onclick:loadSocial},'↻ Refresh')));
+    if(!socialData.friends.length) friends.append(h('div',{class:'muted'},'No friends yet. Add someone by username.'));
+    socialData.friends.forEach(f=>{
+      const actions=[h('button',{class:'alt',onclick:()=>openPlayerProfile(f.id)},'Profile')];
+      if(S.room && !S.game && S.room.host===S.me.id) actions.push(h('button',{onclick:async()=>{const r=await api('/api/rooms/invite',{userId:f.id});toast(r.error||'Invitation sent');}},'Invite to table'));
+      actions.push(h('button',{class:'alt',onclick:async()=>{if(!confirm('Remove '+f.username+' from your friends?'))return;await api('/api/friends/remove',{userId:f.id});await loadSocial();}},'Remove'));
+      friends.append(h('div',{class:'row',style:'justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)'},h('div',{class:'grow'},h('strong',{},(f.avatar||'🂡')+' '+f.displayName),h('div',{class:'muted'},(f.online?'🟢 Online':'⚫ Offline')+' · '+f.rating+' Elo')),h('div',{class:'row'},actions)));
+    });
+    children.push(friends);
+    const invites=h('div',{class:'panel',style:'margin-top:12px'},h('h2',{},'Table invitations'));
+    if(!socialData.invites.length) invites.append(h('div',{class:'muted'},'No pending invitations.'));
+    socialData.invites.forEach(i=>invites.append(h('div',{class:'row',style:'justify-content:space-between;padding:8px 0'},h('div',{class:'grow'},h('strong',{},(i.from.avatar||'🂡')+' '+i.from.displayName),h('div',{class:'muted'},'Invited you to a private table · expires in 10 minutes')),h('button',{onclick:async()=>{const r=await api('/api/rooms/invite/accept',{inviteId:i.id});if(r.error)return toast(r.error);toast('Joined private table');activeScreen='home';await loadSocial();}},'Join'))));
+    children.push(invites);
+    const cups=h('div',{class:'panel',style:'margin-top:12px'},h('h2',{},'🏆 Weekly Makao Cup'));
+    if (!tournamentData || !tournamentData.tournaments.length) cups.append(h('div',{class:'muted'},'Loading this week’s tournament…'));
+    (tournamentData?.tournaments||[]).forEach(t=>{
+      const count=t.entries.length;
+      cups.append(h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('div',{class:'grow'},h('strong',{},t.title),h('div',{class:'muted'},t.status==='open'?count+'/4 players registered':t.status==='completed'?'Completed':'Tournament in progress'),h('div',{class:'muted'},t.entries.map(e=>e.displayName).join(' · ')||'Be one of the first four players')),
+        t.status==='open'&&!t.joined?h('button',{onclick:async()=>{const r=await api('/api/tournaments/join',{tournamentId:t.id});if(r.error)return toast(r.error);toast('You joined the weekly cup');await loadSocial();}},'Join cup'):null));
+      if(t.matches?.length){
+        const bracket=h('div',{style:'margin-top:10px'});
+        bracket.append(h('strong',{},'Bracket'));
+        t.matches.forEach(m=>bracket.append(h('div',{class:'row',style:'justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)'},h('div',{class:'grow'},h('div',{},'Round '+m.round+' · '+m.p1_name+' vs '+m.p2_name),h('div',{class:'muted'},m.status==='completed'?'Winner: '+m.winner_name:m.status==='playing'?'Match in progress':'Ready to play')),m.canStart?h('button',{onclick:async()=>{const r=await api('/api/tournaments/start-match',{matchId:m.id});if(r.error)return toast(r.error);toast('Tournament match started');activeScreen='home';}},'Play match'):null)));
+        cups.append(bracket);
+      }
+    });
+    children.push(cups);
+    children.push(h('div',{class:'muted',style:'margin-top:10px'},'Online status reflects active game connections. Invitations expire after 10 minutes. Blocking and reporting are available from player profiles. Weekly cups are four-player, single-elimination tournaments; matches are casual and do not change Elo.'));
+  }
+  children.push(bottomNav('social'));
+  mount(h('div',{class:'wrap'},children));
+}
+
 function lobbyScreen() {
   const list = h('div', { class: 'list' });
   if (!S.lobbies.length) list.append(h('div', { class: 'muted' }, 'No tables yet. Create the first table!'));
@@ -447,6 +509,7 @@ function bottomNav(active) {
     h('button',{onclick:()=>{activeScreen='home';render();}},h('span',{},'♣'),h('span',{},'Lobby')),
     h('button',{onclick:()=>{activeScreen='customize';render();}},h('span',{},'🎨'),h('span',{},'Table')),
     h('button',{onclick:showShop},h('span',{},'🛍'),h('span',{},'Shop')),
+    h('button',{onclick:showSocial},h('span',{},'👥'),h('span',{},'Social')),
     h('button',{onclick:showOwnProfile},h('span',{},'👤'),h('span',{},'Profile')));
 }
 
@@ -524,6 +587,9 @@ function profileScreen() {
       children.push(h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Progression'),progressionError||'Progress data could not be loaded. Reopen your profile to retry.',h('button',{class:'alt',style:'margin-top:10px',onclick:()=>{progressionData=null;loadProgression();}},'Retry')));
     }
   }
+  if (viewing) {
+    children.push(h('div',{class:'row',style:'margin-top:14px'},h('button',{class:'alt',onclick:async()=>{if(!confirm('Block this player? They will be removed from your friends list.'))return;const r=await api('/api/players/block',{userId:me.id});if(r.error)return toast(r.error);toast('Player blocked');goBack();}},'Block player'),h('button',{class:'alt',onclick:async()=>{const reason=prompt('Reason: harassment, cheating, offensive_name, spam or other','harassment');if(!reason)return;const r=await api('/api/players/report',{userId:me.id,reason,details:''});toast(r.error||'Report submitted');}},'Report player')));
+  }
   if (!viewing) {
     const avatars=['🂡' ,'😎','🦊','🐺','🐱','🐼','🐸','👑','🔥','🎯','🦄','🐉'];
     const nameInput=h('input',{id:'profileName',maxlength:20,value:me.displayName||me.username,style:'width:100%'});
@@ -573,7 +639,7 @@ function resultOverlay(res) {
     h('td', { class: x.delta >= 0 ? 'pos' : 'neg' }, (x.delta >= 0 ? '+' : '') + x.delta))));
   return h('div', { class: 'overlay' }, h('div', { class: 'panel' },
     h('h2', {}, res.winnerId === S.me.id ? '🎉 You won!' : res.winner + ' wins'),
-    res.ranked ? tbl : h('div', { class: 'muted' }, 'Casual game (custom rules): ratings unchanged'),
+    res.ranked ? tbl : h('div', { class: 'muted' }, res.tournament ? 'Tournament match completed · ratings unchanged' : 'Casual game (custom rules): ratings unchanged'),
     h('button', { style: 'margin-top:12px', onclick: () => { dismissed = res.id; localStorage.setItem('mk_dismissed', dismissed); render(); } }, 'OK')));
 }
 
@@ -675,6 +741,7 @@ function render() {
   if (activeScreen === 'profile') return profileScreen();
   if (activeScreen === 'customize') return customizeScreen();
   if (activeScreen === 'shop') return shopScreen();
+  if (activeScreen === 'social') return socialScreen();
   if (S.game) return gameScreen();
   if (S.room) return roomScreen();
   lobbyScreen();
@@ -682,7 +749,7 @@ function render() {
 
 render();
 if (token) connect();
-loadBoard(); setInterval(() => { if (token && S && !S.room) loadBoard(); }, 15000);
+loadBoard(); setInterval(() => { if (token && S && !S.room) loadBoard(); if (token && activeScreen === 'social' && !socialLoading) loadSocial(); }, 15000);
 </script>
 </body>
 </html>

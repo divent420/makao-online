@@ -16,7 +16,7 @@ npm test
 
 Open http://localhost:3000 (or the `PORT` environment variable).
 
-## New in this build (v1.4.0)
+## New in this build (v1.5.0)
 
 - Mobile-first Android-inspired interface and responsive game table.
 - Editable player profiles: display name, avatar and short bio.
@@ -68,7 +68,7 @@ Requires Node.js 22 or newer because it uses the built-in `node:sqlite` module. 
 npm test
 ```
 
-The suite covers core game rules, AI decisions, XP thresholds, achievement unlocks, daily challenge rewards, streak tracking and progression-history idempotency. The release was also smoke-tested with two authenticated users entering Quick Match and a third user starting a game with two AI opponents; an AI turn was observed automatically.
+The suite covers core game rules, AI decisions, XP thresholds, achievement unlocks, daily challenge rewards, streak tracking, progression-history idempotency, friend requests, blocking, reports, private invitations, weekly tournament registration, bracket progression and winner recording. An end-to-end smoke test also exercised authentication, live presence, friend requests, private-table invitation/acceptance, four-player cup registration and tournament match launch.
 
 ## Player progression
 
@@ -88,3 +88,20 @@ The suite covers core game rules, AI decisions, XP thresholds, achievement unloc
 - The initial catalog contains card backs, table themes and avatar frames.
 - The shop currently uses earnable in-game coins only. No real-money payment provider, paid currency, or checkout is configured.
 - The shop tables (`shop_wallets`, `cosmetics`, `user_cosmetics`, `user_equipped_cosmetics`) are created automatically and do not alter existing account or match data.
+
+
+## Friends and community (v1.5.0)
+
+- Friend requests by username, accept/decline, remove friends and online/offline presence.
+- Invite friends to a waiting private table. Invitations expire after 10 minutes and are revalidated on acceptance.
+- Block players to remove the friendship, cancel pending social invitations and prevent future friend requests, private invites and direct table joins. Blocked pairs are also excluded from Quick Match.
+- Report players for harassment, cheating, offensive names, spam or other conduct. Reports are stored in SQLite for operator review; this build does not yet include a moderation dashboard or automated sanctions.
+
+## Weekly Makao Cup
+
+- A new four-player single-elimination cup is created automatically each Monday at 00:00 UTC.
+- Players can register from the Social screen. The fourth registration creates registration-order semifinal matches (1 vs 4 and 2 vs 3).
+- Either participant can launch their ready match when both players have left any other table. The opponent is placed into the same game automatically.
+- Match winners advance to the final; the final winner is recorded as the tournament champion.
+- Tournament games award normal casual progression and coins but do not change Elo.
+- Brackets, match status and active tournament match metadata are stored in SQLite and active matches use the existing room snapshot recovery.

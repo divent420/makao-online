@@ -11,6 +11,8 @@ const M = require('./makao');
 const AI = require('./ai');
 const Progression = require('./progression');
 const Shop = require('./shop');
+const Social = require('./social');
+const Tournaments = require('./tournaments');
 
 const PORT = process.env.PORT || 3000;
 const TURN_MS = Number(process.env.TURN_MS) || 60000;          // time to act before auto-play
@@ -44,6 +46,8 @@ CREATE TABLE IF NOT EXISTS active_rooms(
 `);
 Progression.initialize(db);
 Shop.initialize(db);
+Social.initialize(db);
+Tournaments.initialize(db);
 // Safe migrations for databases created by earlier versions.
 for (const [name, def] of [['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
@@ -132,6 +136,7 @@ function persistRoom(room) {
     id: room.id, name: room.name, host: room.host, max: room.max,
     members: room.members, game: room.game, chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
+    tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
   q.saveRoom.run(room.id, JSON.stringify(snapshot), Date.now());
 }
@@ -141,8 +146,8 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game, aiGame: !!r.aiGame,
-    rules: r.rules, ranked: !r.aiGame && M.isRanked(r.rules),
+    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
     members: r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id) }; }),
     chat: r.chat.slice(-40), result: r.result,
   };
@@ -154,7 +159,7 @@ function stateFor(uid) {
     t: 'state', me: userView(u),
     lobbies: [...rooms.values()].map((r) => ({
       id: r.id, name: r.name, host: uname(r.host), count: r.members.length, max: r.max, playing: !!r.game,
-      ranked: M.isRanked(r.rules),
+      ranked: !r.tournamentId && M.isRanked(r.rules),
     })),
     room: room ? roomView(room) : null,
     matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
@@ -224,6 +229,7 @@ function restoreRooms() {
         members: saved.members, game: saved.game || null,
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
+        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null,
         rules: M.sanitizeRules(saved.rules),
       };
       if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
@@ -247,10 +253,10 @@ function finishGame(room) {
   const st = room.game;
   const players = st.players;
   const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
-  const ranked = !room.aiGame && M.isRanked(room.rules);
+  const ranked = !room.aiGame && !room.tournamentId && M.isRanked(room.rules);
   const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
   const playedAt = Date.now();
-  const result = { id: playedAt, ranked, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
+  const result = { id: playedAt, ranked, tournament: !!room.tournamentId, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
   db.exec('BEGIN');
   try {
     humanRows.forEach((u, i) => {
@@ -273,6 +279,10 @@ function finishGame(room) {
     }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
+  if (room.tournamentId && result.winnerId > 0) {
+    const advanced = Tournaments.completeMatch(db, room.tournamentId, room.tournamentMatchId, result.winnerId, playedAt);
+    if (advanced.error) console.warn('Tournament advancement failed:', advanced.error);
+  }
   room.result = result;
   room.game = null;
 }
@@ -316,7 +326,7 @@ function handleAct(user, m) {
       for (const [id, joinedAt] of matchmakingQueue) if (Date.now() - joinedAt > 120000 || !online.has(id)) matchmakingQueue.delete(id);
       const myRating = q.byId.get(uid).rating;
       const candidates = [...matchmakingQueue.entries()].filter(([id, joinedAt]) => {
-        if (id === uid || userRoom.has(id) || !online.has(id)) return false;
+        if (id === uid || userRoom.has(id) || !online.has(id) || Social.isBlocked(db, uid, id)) return false;
         const other = q.byId.get(id);
         if (!other) return false;
         const waited = Math.max(Date.now() - joinedAt, Date.now() - matchmakingQueue.get(uid));
@@ -384,6 +394,7 @@ function handleAct(user, m) {
       const r = rooms.get(str(m.id, 20));
       if (!r) return { error: 'That table no longer exists' };
       if (r.game) return { error: 'That game already started' };
+      if (r.members.some(id => Social.isBlocked(db, uid, id))) return { error: 'You cannot join a table with a player you have blocked or who blocked you' };
       if (r.members.length >= r.max) return { error: 'That table is full' };
       r.members.push(uid); userRoom.set(uid, r.id);
       r.result = null;
@@ -528,6 +539,143 @@ const server = http.createServer((req, res) => {
     const user = userByToken(req.headers['x-token']);
     if (!user) return send(res, 401, { error: 'Not signed in' });
     return send(res, 200, Progression.getProgression(db, user.id));
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/tournaments') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return send(res, 200, Tournaments.getTournaments(db, user.id));
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/tournaments/join') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Tournaments.join(db, user.id, m.tournamentId);
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/tournaments/start-match') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      if (userRoom.has(user.id)) return send(res, 400, { error: 'Leave your current table first' });
+      const match = Tournaments.getMatchForStart(db, user.id, m.matchId);
+      if (!match) return send(res, 404, { error: 'No ready tournament match found for you' });
+      if (userRoom.has(match.player1_id) || userRoom.has(match.player2_id)) return send(res, 400, { error: 'Both players must leave their current tables first' });
+      if (Social.isBlocked(db, match.player1_id, match.player2_id)) return send(res, 403, { error: 'These players have blocked one another; contact support to resolve this bracket pairing' });
+      const ids = [match.player1_id, match.player2_id];
+      const players = ids.map(id => q.byId.get(id));
+      if (players.some(p => !p)) return send(res, 400, { error: 'A tournament player account is unavailable' });
+      const roomId = crypto.randomBytes(5).toString('hex');
+      const rules = { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 };
+      const list = players.map(u => ({ id:u.id, name:u.display_name || u.username }));
+      for (let i=list.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
+      const room = { id:roomId, name:'Weekly Cup · Round '+match.round, host:match.player1_id, max:2, members:ids,
+        game:M.newGame(list,rules), chat:[], result:null, timer:null, aiGame:false, aiDifficulty:'normal', rules,
+        tournamentId:match.tournament_id, tournamentMatchId:match.id };
+      if (!Tournaments.setMatchRoom(db, match.id, roomId)) return send(res, 409, { error:'This tournament match was just claimed' });
+      rooms.set(roomId,room); ids.forEach(id=>userRoom.set(id,roomId));
+      persistRoom(room); armTimer(room); pushAll();
+      return send(res,200,{ok:true,roomId});
+    });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/social') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return send(res, 200, Social.list(db, user.id, (id) => online.has(id)));
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/friends/request') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Social.request(db, user.id, m.username);
+      if (!result.error) pushAll();
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/friends/respond') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Social.respond(db, user.id, m.requestId, !!m.accept);
+      if (!result.error) pushAll();
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/friends/remove') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Social.removeFriend(db, user.id, m.userId);
+      pushAll(); return send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/players/block') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Social.block(db, user.id, m.userId);
+      if (!result.error) pushAll();
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/players/report') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const result = Social.report(db, user.id, m.userId, m.reason, m.details);
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/rooms/invite') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      const room = rooms.get(userRoom.get(user.id));
+      if (!room || room.game || room.host !== user.id) return send(res, 400, { error: 'Only the host of a waiting table can invite friends' });
+      if (room.members.length >= room.max) return send(res, 400, { error: 'This table is full' });
+      if (room.members.includes(Number(m.userId))) return send(res, 400, { error: 'That player is already at your table' });
+      const result = Social.createInvite(db, user.id, m.userId, room.id);
+      if (!result.error) pushAll();
+      return result.error ? send(res, 400, result) : send(res, 200, result);
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/rooms/invite/accept') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return readBody(req, (m) => {
+      if (!m) return send(res, 400, { error: 'Bad request' });
+      if (userRoom.has(user.id)) return send(res, 400, { error: 'Leave your current table first' });
+      const invite = Social.getInvite(db, m.inviteId, user.id);
+      if (!invite) return send(res, 404, { error: 'Invitation expired or no longer available' });
+      if (!Social.areFriends(db, user.id, invite.sender_id) || Social.isBlocked(db, user.id, invite.sender_id)) return send(res, 403, { error: 'You are no longer friends with the inviter' });
+      const room = rooms.get(invite.room_id);
+      if (!room || room.game || room.members.length >= room.max || !room.members.includes(invite.sender_id)) {
+        return send(res, 400, { error: 'That table is no longer available' });
+      }
+      room.members.push(user.id); userRoom.set(user.id, room.id); room.result = null;
+      Social.markInviteAccepted(db, invite.id);
+      persistRoom(room); pushAll();
+      return send(res, 200, { ok: true, roomId: room.id });
+    });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/shop') {

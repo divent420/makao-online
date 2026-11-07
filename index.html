@@ -553,7 +553,7 @@ function connect() {
       const leftTable = !!(S && S.room && !m.room);
       S = m;
       if (leftTable) loadGameHistory(true);
-      if (!shopData && !shopLoading) loadShop();
+      if (activeScreen === 'shop' && !shopLoading) loadShop();
       sel = sel.filter((c) => S.game && S.game.hand.includes(c));
       if (!S.game || !S.game.myTurn) { sel = []; choose = null; sayMakao = false; }
       else if (!prevTurn) { try { navigator.vibrate && navigator.vibrate(60); } catch (_) {} }

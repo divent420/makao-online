@@ -109,3 +109,18 @@ test('terminal game view exposes winner so clients can keep the final board visi
   assert.equal(view.winner, 0);
   assert.equal(view.myTurn, false);
 });
+
+
+test('supports multiple decks and larger starting hands', () => {
+  const game = M.newGame([{ id: 1, name: 'A' }, { id: 2, name: 'B' }], { deckCount: 3, handSize: 12 });
+  assert.deepEqual(game.players.map(p => p.hand.length), [12, 12]);
+  assert.equal(game.deck.length + game.discard.length + game.players.reduce((n, p) => n + p.hand.length, 0), 156);
+  assert.equal(game.rules.deckCount, 3);
+  assert.equal(game.rules.handSize, 12);
+});
+
+test('clamps deck count and hand size to supported limits', () => {
+  const rules = M.sanitizeRules({ deckCount: 99, handSize: 99 });
+  assert.equal(rules.deckCount, 4);
+  assert.equal(rules.handSize, 12);
+});

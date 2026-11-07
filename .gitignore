@@ -1,0 +1,6 @@
+node_modules/
+makao.db
+makao.db-shm
+makao.db-wal
+.env
+.DS_Store

@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS sessions(
 CREATE TABLE IF NOT EXISTS games(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   finished INTEGER NOT NULL, winner_id INTEGER, players TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS active_rooms(
+  room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
 `);
 // Safe migrations for databases created by earlier versions.
 for (const [name, def] of [['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
@@ -53,6 +55,9 @@ const q = {
   top: db.prepare('SELECT id,username,display_name,avatar,rating,games,wins FROM users WHERE games>0 ORDER BY rating DESC, wins DESC, games ASC LIMIT 50'),
   upd: db.prepare('UPDATE users SET rating=?, games=games+1, wins=wins+? WHERE id=?'),
   insGame: db.prepare('INSERT INTO games(finished,winner_id,players) VALUES(?,?,?)'),
+  saveRoom: db.prepare('INSERT INTO active_rooms(room_id,snapshot,updated) VALUES(?,?,?) ON CONFLICT(room_id) DO UPDATE SET snapshot=excluded.snapshot, updated=excluded.updated'),
+  delRoom: db.prepare('DELETE FROM active_rooms WHERE room_id=?'),
+  activeRooms: db.prepare('SELECT room_id,snapshot FROM active_rooms ORDER BY updated'),
 };
 
 // ---------- accounts ----------
@@ -111,6 +116,21 @@ const dcTimers = new Map();     // userId -> timeout
 const uname = (id) => { const u = q.byId.get(id); return u ? u.username : '?'; };
 const str = (s, n) => String(s == null ? '' : s).slice(0, n);
 
+// Persist only serializable room state. Timers and live HTTP responses are rebuilt
+// after a restart; game state, membership, rules and chat survive.
+function persistRoom(room) {
+  if (!room) return;
+  const snapshot = {
+    id: room.id, name: room.name, host: room.host, max: room.max,
+    members: room.members, game: room.game, chat: room.chat,
+    result: room.result, rules: room.rules,
+  };
+  q.saveRoom.run(room.id, JSON.stringify(snapshot), Date.now());
+}
+function deleteRoomSnapshot(roomId) {
+  q.delRoom.run(roomId);
+}
+
 function roomView(r) {
   return {
     id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game,
@@ -139,16 +159,60 @@ function pushAll() {
 }
 
 // ---------- game flow ----------
-function armTimer(room) {
+function armTimer(room, restoring = false) {
   clearTimeout(room.timer);
   if (!room.game || room.game.winner != null) return;
-  const ms = room.rules.turnSeconds * 1000;
-  room.game.deadline = Date.now() + ms;
+  const now = Date.now();
+  const savedDeadline = Number(room.game.deadline);
+  const ms = restoring && Number.isFinite(savedDeadline)
+    ? Math.max(0, savedDeadline - now)
+    : room.rules.turnSeconds * 1000;
+  room.game.deadline = now + ms;
   room.timer = setTimeout(() => {
     if (!room.game) return;
     M.autoPlay(room.game);
     afterAction(room);
   }, ms);
+  persistRoom(room);
+}
+
+// Recover active rooms before accepting connections. A corrupt snapshot is
+// discarded safely rather than preventing the server from starting.
+function restoreRooms() {
+  for (const row of q.activeRooms.all()) {
+    try {
+      const saved = JSON.parse(row.snapshot);
+      if (!saved || saved.id !== row.room_id || !Array.isArray(saved.members) ||
+          !saved.members.length || !saved.rules ||
+          saved.members.some((id) => !q.byId.get(id))) {
+        throw new Error('Invalid room snapshot');
+      }
+      if (saved.game && (!Array.isArray(saved.game.players) ||
+          saved.game.players.some((p) => !q.byId.get(p.id)))) {
+        throw new Error('Invalid saved game');
+      }
+      const room = {
+        id: saved.id, name: str(saved.name, 30), host: saved.members.includes(saved.host) ? saved.host : saved.members[0],
+        max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
+        members: saved.members, game: saved.game || null,
+        chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
+        result: saved.result || null, timer: null,
+        rules: M.sanitizeRules(saved.rules),
+      };
+      if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
+      rooms.set(room.id, room);
+      for (const id of room.members) {
+        userRoom.set(id, room.id);
+        dcTimers.set(id, setTimeout(() => { if (!online.has(id)) leaveRoom(id); }, room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS));
+      }
+      if (room.game && room.game.winner == null) armTimer(room, true);
+      else persistRoom(room);
+    } catch (error) {
+      console.warn('Discarding invalid active room snapshot:', row.room_id, error.message);
+      deleteRoomSnapshot(row.room_id);
+    }
+  }
+  if (rooms.size) console.log('Restored ' + rooms.size + ' active Makao room(s)');
 }
 
 function finishGame(room) {
@@ -181,10 +245,13 @@ function finishGame(room) {
 function afterAction(room) {
   if (room.game && room.game.winner != null) finishGame(room);
   else armTimer(room);
+  persistRoom(room);
   pushAll();
 }
 
 function leaveRoom(uid) {
+  clearTimeout(dcTimers.get(uid));
+  dcTimers.delete(uid);
   const room = rooms.get(userRoom.get(uid));
   if (!room) return;
   if (room.game) M.forfeit(room.game, uid);
@@ -193,10 +260,12 @@ function leaveRoom(uid) {
   if (!room.members.length) {
     clearTimeout(room.timer);
     rooms.delete(room.id);
+    deleteRoomSnapshot(room.id);
   } else {
     if (room.host === uid) room.host = room.members[0];
     if (room.game && room.game.winner != null) finishGame(room);
     else armTimer(room);
+    persistRoom(room);
   }
   pushAll();
 }
@@ -215,6 +284,7 @@ function handleAct(user, m) {
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 },
       });
       userRoom.set(uid, id);
+      persistRoom(rooms.get(id));
       break;
     }
     case 'joinRoom': {
@@ -225,6 +295,7 @@ function handleAct(user, m) {
       if (r.members.length >= r.max) return { error: 'That table is full' };
       r.members.push(uid); userRoom.set(uid, r.id);
       r.result = null;
+      persistRoom(r);
       break;
     }
     case 'setRules': {
@@ -237,6 +308,7 @@ function handleAct(user, m) {
         const last = room.chat[room.chat.length - 1];
         if (last && last.from === 'Table' && last.text === note) last.ts = Date.now();
         else room.chat.push({ from: 'Table', text: note, ts: Date.now() });
+        persistRoom(room);
       }
       break;
     }
@@ -265,7 +337,7 @@ function handleAct(user, m) {
     case 'chat': {
       if (!room) return { error: 'Join a table first' };
       const text = str(m.text, 200).trim();
-      if (text) { room.chat.push({ from: user.username, text, ts: Date.now() }); if (room.chat.length > 100) room.chat.shift(); }
+      if (text) { room.chat.push({ from: user.username, text, ts: Date.now() }); if (room.chat.length > 100) room.chat.shift(); persistRoom(room); }
       break;
     }
     default: return { error: 'Unknown action' };
@@ -375,6 +447,7 @@ const server = http.createServer((req, res) => {
     if (old) old.res.end();
     online.set(user.id, { res });
     clearTimeout(dcTimers.get(user.id));
+    dcTimers.delete(user.id);
     res.write('data: ' + JSON.stringify(stateFor(user.id)) + '\n\n');
     pushAll();
     const beat = setInterval(() => res.write(': hb\n\n'), 20000);
@@ -405,4 +478,5 @@ const server = http.createServer((req, res) => {
   res.writeHead(404); res.end('not found');
 });
 
+restoreRooms();
 server.listen(PORT, () => console.log('Makao running on http://localhost:' + PORT));

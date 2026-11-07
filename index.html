@@ -1088,6 +1088,7 @@ function gameScreen() {
       S.room.aiGame ? h('button',{style:'margin-top:12px',onclick:()=>act({t:'rematchAI'})},'🤖 Play again') : (!S.room.tournament ? h('div',{style:'margin-top:12px'},h('button',{disabled:(S.room.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const r=await act({t:'rematch'});if(r.ok)toast(r.started?'Rematch started':'Rematch vote recorded ('+r.votes+'/'+r.required+')');}},(S.room.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch vs players'),h('div',{class:'muted',style:'margin-top:8px'},(S.room.rematchVotes||[]).length+' / '+S.room.members.length+' players want a rematch')):null),
       h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null,
     bottomNav('home')));
+  tick();
 }
 function tick() {
   const t = $('timer');

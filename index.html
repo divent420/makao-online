@@ -227,6 +227,10 @@
   .replay-move { text-align:left; font-size:12px; white-space:normal; }
   .replay-move.selected { outline:2px solid #e9bd4d; background:#344a3d; }
   @media(max-width:520px) { .history-row { align-items:flex-start; } .history-row button { flex-shrink:0; } .replay-players { grid-template-columns:1fr; } }
+
+  .replay-discard { display:flex; justify-content:center; gap:4px; margin-top:5px; }
+  .replay-discard .card { width:42px; height:62px; padding:4px; font-size:13px; }
+  .replay-discard .card .s { font-size:18px; }
 </style>
 </head>
 <body>
@@ -303,7 +307,7 @@ function replayScreen() {
     const log=frame.log||[], msg=log.length?log[log.length-1]:'Game started';
     return h('button',{class:'alt replay-move'+(absolute===replayStep?' selected':''),onclick:()=>{replayStep=absolute;render();}},absolute===0?'Start':('Step '+absolute+' · '+msg));
   });
-  const top=(st.discard||[]).slice(-1)[0];
+  const discardStack=(st.discard||[]).slice(-6);
   const content=h('div',{class:'wrap'},topBar(),
     h('div',{class:'screen-title'},'Game replay #'+g.id),
     h('div',{class:'panel replay-summary'},
@@ -313,9 +317,10 @@ function replayScreen() {
       h('div',{class:'replay-progress'},h('div',{style:'width:'+pct+'%'}))),
     h('div',{class:'panel',style:'margin-top:12px'},
       h('div',{class:'row',style:'justify-content:center;gap:18px'},
-        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Discard pile'),top?cardEl(top):h('span',{},'—')),
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Discard pile · '+(st.discard||[]).length),h('div',{class:'replay-discard'},discardStack.map(c=>cardEl(c)))),
         h('div',{style:'text-align:center'},h('div',{class:'muted'},'Deck remaining'),h('strong',{},String((st.deck||[]).length))),
-        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Active suit'),h('span',{class:'suit'},SYM[st.suit]||'—'))),
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Active suit'),h('span',{class:'suit'},SYM[st.suit]||'—')),
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Table effect'),h('strong',{},st.pending?(st.pending.type==='draw'?'Draw '+st.pending.n:'Wait '+st.pending.n):st.demand?'Demand '+st.demand.rank:'None'))),
       h('div',{class:'replay-players'},playerRows)),
     h('div',{class:'panel',style:'margin-top:12px'},
       h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Move controls'),h('span',{class:'muted'},pct+'%')),
@@ -649,11 +654,11 @@ function lobbyScreen() {
   if (!board.length) tbl.append(h('tr', {}, h('td', { colspan: 4, class: 'muted' }, 'No ranked games yet')));
   const historyPanel=h('div',{class:'panel game-history-panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Recent games'),h('button',{class:'alt',onclick:()=>loadGameHistory(true)},'↻ Refresh')));
   if(gameHistoryLoading&&!gameHistoryData) historyPanel.append(h('div',{class:'muted'},'Loading your games…'));
-  else if(!gameHistoryData||!gameHistoryData.length) historyPanel.append(h('div',{class:'muted'},'Your completed games will appear here with full move-by-move replays.'));
+  else if(!gameHistoryData||!gameHistoryData.length) historyPanel.append(h('div',{class:'muted'},'No replayable games yet. Games completed from this update onward will be saved here; older results did not include move-by-move data.'));
   else gameHistoryData.slice(0,8).forEach(g=>{
     const winner=(g.players||[]).find(p=>p.id===g.winnerId);
     const names=(g.players||[]).map(p=>p.name).join(' · ');
-    historyPanel.append(h('div',{class:'history-row'},h('div',{class:'grow'},h('strong',{},'🏆 '+(winner?winner.name:'Game completed')),h('div',{class:'muted'},new Date(g.finished).toLocaleString()+' · '+names)),h('button',{onclick:()=>openGameReplay(g.id)},'▶ Replay')));
+    historyPanel.append(h('div',{class:'history-row'},h('div',{class:'grow'},h('strong',{},'🏆 '+(winner?winner.name:'Game completed')),h('div',{class:'muted'},new Date(g.finished).toLocaleString()+' · '+Math.max(1,Math.round((g.finished-g.started)/60000))+' min · '+names)),h('button',{onclick:()=>openGameReplay(g.id)},'▶ Replay')));
   });
   const nav=bottomNav('home');
   mount(h('div', { class: 'wrap' }, topBar(),

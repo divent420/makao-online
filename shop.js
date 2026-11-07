@@ -5,11 +5,18 @@ const CATALOG = [
   { id: 'back_nebula', name: 'Nebula Card Back', description: 'A violet starfield for the back of your cards.', category: 'card_back', price: 180, icon: '🌌', effect: 'nebula' },
   { id: 'back_sunset', name: 'Sunset Card Back', description: 'Warm sunset stripes on every hidden card.', category: 'card_back', price: 180, icon: '🌅', effect: 'sunset' },
   { id: 'back_gold', name: 'Gilded Card Back', description: 'A gold geometric card-back pattern.', category: 'card_back', price: 350, icon: '✨', effect: 'gold' },
+  { id: 'back_prism', name: 'Prism Card Back', description: 'Shifting rainbow bands with a glass-like finish.', category: 'card_back', price: 320, icon: '🌈', effect: 'prism' },
+  { id: 'back_obsidian', name: 'Obsidian Card Back', description: 'A sleek black card back with silver lines.', category: 'card_back', price: 380, icon: '🖤', effect: 'obsidian' },
+  { id: 'back_koi', name: 'Koi Card Back', description: 'A deep-water pattern with bright koi accents.', category: 'card_back', price: 420, icon: '🐟', effect: 'koi' },
   { id: 'felt_sakura', name: 'Sakura Table', description: 'A soft rose-coloured table felt.', category: 'table_theme', price: 250, icon: '🌸', effect: 'sakura' },
   { id: 'felt_aurora', name: 'Aurora Table', description: 'A cool teal and northern-light table.', category: 'table_theme', price: 300, icon: '🌌', effect: 'aurora' },
+  { id: 'felt_volcano', name: 'Volcano Table', description: 'A molten red and ember-orange playing surface.', category: 'table_theme', price: 360, icon: '🌋', effect: 'volcano' },
+  { id: 'felt_amethyst', name: 'Royal Amethyst Table', description: 'A rich violet felt with a midnight edge.', category: 'table_theme', price: 380, icon: '💜', effect: 'amethyst' },
   { id: 'frame_flame', name: 'Flame Avatar Frame', description: 'A fiery frame around your player avatar.', category: 'avatar_frame', price: 220, icon: '🔥', effect: 'flame' },
   { id: 'frame_ice', name: 'Frost Avatar Frame', description: 'An icy frame around your player avatar.', category: 'avatar_frame', price: 220, icon: '❄️', effect: 'ice' },
   { id: 'frame_crown', name: 'Royal Avatar Frame', description: 'A golden frame for your profile.', category: 'avatar_frame', price: 400, icon: '👑', effect: 'crown' },
+  { id: 'frame_neon', name: 'Neon Avatar Frame', description: 'A bright electric glow around your avatar.', category: 'avatar_frame', price: 340, icon: '💠', effect: 'neon' },
+  { id: 'frame_emerald', name: 'Emerald Avatar Frame', description: 'A polished green gemstone frame.', category: 'avatar_frame', price: 360, icon: '💚', effect: 'emerald' },
 ];
 
 function initialize(db) {

@@ -651,7 +651,7 @@ function topBar() {
     S.me.isAdmin && activeScreen !== 'admin' ? h('button',{class:'alt admin-shortcut',onclick:showAdmin},'🛡') : null);
 }
 const DEFAULTS = {
-  handSize: 5, draw2: true, draw3: true, kings: true, stackPenalties: true, four: true, jack: true, ace: true,
+  handSize: 5, deckCount: 1, draw2: true, draw3: true, kings: true, stackPenalties: true, four: true, jack: true, ace: true,
   queenWild: true, multiPlay: true, playAfterDraw: true, makaoCall: true, noFinishOnFunctional: true, turnSeconds: 60,
 };
 const RULE_DEFS = [
@@ -699,8 +699,8 @@ function rulesPanel(r, isHost) {
     h('span',{},label),
     isHost
       ? h('select',{id,onchange:(e)=>setRules({[id.slice(3)]:Number(e.target.value)})},
-          [...new Set([...values,current])].sort((a,b)=>a-b).map(v=>h('option',{value:v,selected:v===current},id==='rs_turnSeconds'?v+' seconds':v+' cards')))
-      : h('strong',{},id==='rs_turnSeconds'?current+' seconds':current+' cards'));
+          [...new Set([...values,current])].sort((a,b)=>a-b).map(v=>h('option',{value:v,selected:v===current},id==='rs_turnSeconds'?v+' seconds':id==='rs_deckCount'?v+(v===1?' deck':' decks'):v+' cards')))
+      : h('strong',{},id==='rs_turnSeconds'?current+' seconds':id==='rs_deckCount'?current+(current===1?' deck':' decks'):current+' cards'));
   const settings = h('div',{class:'rule-settings'},
     setting('rs_handSize','Starting hand',[3,4,5,6,7],R.handSize),
     setting('rs_turnSeconds','Time per turn',[15,30,45,60,90,120,180],R.turnSeconds));

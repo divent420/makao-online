@@ -27,7 +27,8 @@ const suit = (c) => c.slice(-1);
 // Table rules. The host can change these before a game starts. A game played with any
 // rule other than the defaults is "casual" and does not change ratings (turnSeconds excepted).
 const DEFAULT_RULES = {
-  handSize: 5,                 // 3-7 cards dealt
+  handSize: 5,                 // 3-12 cards dealt
+  deckCount: 1,                // 1-4 standard decks
   draw2: true,                 // 2: next player draws 2
   draw3: true,                 // 3: next player draws 3
   kings: true,                 // K of hearts / spades: next player draws 5
@@ -48,12 +49,13 @@ function sanitizeRules(inp) {
   const r = { ...DEFAULT_RULES };
   inp = inp && typeof inp === 'object' ? inp : {};
   for (const k of BOOL_RULES) if (k in inp) r[k] = !!inp[k];
-  if ('handSize' in inp) r.handSize = Math.min(7, Math.max(3, Math.round(Number(inp.handSize)) || DEFAULT_RULES.handSize));
+  if ('handSize' in inp) r.handSize = Math.min(12, Math.max(3, Math.round(Number(inp.handSize)) || DEFAULT_RULES.handSize));
+  if ('deckCount' in inp) r.deckCount = Math.min(4, Math.max(1, Math.round(Number(inp.deckCount)) || DEFAULT_RULES.deckCount));
   if ('turnSeconds' in inp) r.turnSeconds = Math.min(300, Math.max(10, Math.round(Number(inp.turnSeconds)) || DEFAULT_RULES.turnSeconds));
   return r;
 }
 const isRanked = (rules) =>
-  rules.handSize === DEFAULT_RULES.handSize && BOOL_RULES.every((k) => rules[k] === DEFAULT_RULES[k]);
+  rules.handSize === DEFAULT_RULES.handSize && rules.deckCount === DEFAULT_RULES.deckCount && BOOL_RULES.every((k) => rules[k] === DEFAULT_RULES[k]);
 
 const isPenalty = (c, R) => {
   const r = rank(c), s = suit(c);
@@ -69,15 +71,16 @@ function shuffle(a) {
   }
   return a;
 }
-function fullDeck() {
+function fullDeck(deckCount = 1) {
   const d = [];
-  for (const s of SUITS) for (const r of RANKS) d.push(r + s);
+  for (let pack = 0; pack < deckCount; pack++)
+    for (const s of SUITS) for (const r of RANKS) d.push(r + s);
   return shuffle(d);
 }
 
 function newGame(list, rulesIn) {
   const rules = sanitizeRules(rulesIn);
-  const deck = fullDeck();
+  const deck = fullDeck(rules.deckCount);
   const players = list.map((p) => ({ id: p.id, name: p.name, hand: [], wait: 0, out: false }));
   for (let i = 0; i < rules.handSize; i++) for (const p of players) p.hand.push(deck.pop());
   const idx = deck.findIndex((c) => !isFunctional(c, rules) && !(rules.queenWild && rank(c) === 'Q'));

@@ -190,6 +190,25 @@
   @media(max-width:760px) { .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media(max-width:420px) { .shop-grid { grid-template-columns:1fr; } .shape-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 
+
+  /* Lobby rules: compact icon toggles with hover labels and clear state colors. */
+  .lobby-rules { margin-top:14px; border-top:1px solid var(--line); padding-top:14px; }
+  .rule-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+  .rule-setting { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border:1px solid #ffffff18; border-radius:12px; background:#0e1723; color:var(--muted); font-size:12px; }
+  .rule-setting select { width:100%; min-width:0; min-height:38px; padding:7px 9px; color:var(--text); font-weight:650; }
+  .rule-setting strong { color:var(--text); font-size:15px; }
+  .rule-button-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px; }
+  .rule-toggle { position:relative; display:grid; place-items:center; min-width:0; min-height:66px; padding:9px; border:2px solid; border-radius:14px; box-shadow:none; background:#111b28; transition:border-color .15s,background .15s,transform .15s; }
+  .rule-toggle.is-on { border-color:#35c982; background:linear-gradient(145deg,#123b30,#10251f); color:#b5ffd7; }
+  .rule-toggle.is-off { border-color:#df626a; background:linear-gradient(145deg,#402329,#261b24); color:#ffc0c4; }
+  .rule-toggle:not(:disabled):hover { transform:translateY(-2px); filter:brightness(1.18); z-index:2; }
+  .rule-toggle.read-only { cursor:default; opacity:1; }
+  .rule-icon { font-size:25px; line-height:1; }
+  .rule-status { position:absolute; right:6px; top:4px; font-size:17px; line-height:1; font-weight:900; }
+  .rule-tooltip { position:absolute; left:50%; bottom:calc(100% + 9px); transform:translate(-50%,5px); width:max-content; max-width:min(230px,75vw); padding:8px 10px; border:1px solid #53647a; border-radius:9px; background:#080e17; color:#f4f6fb; font-size:12px; font-weight:550; line-height:1.35; text-align:center; white-space:normal; box-shadow:0 8px 24px #0008; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s,transform .12s; }
+  .rule-toggle:hover .rule-tooltip,.rule-toggle:focus-visible .rule-tooltip { opacity:1; visibility:visible; transform:translate(-50%,0); }
+  @media(max-width:760px) { .rule-button-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; } .rule-toggle { min-height:60px; } }
+  @media(max-width:420px) { .rule-button-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .rule-settings { gap:7px; } }
 </style>
 </head>
 <body>
@@ -428,27 +447,46 @@ const RULE_DEFS = [
 function setRules(patch) { act({ t: 'setRules', rules: { ...S.room.rules, ...patch } }); }
 function rulesPanel(r, isHost) {
   const R = r.rules;
-  const head = h('div', { class: 'row', style: 'justify-content:space-between; margin-bottom:6px' },
+  const head = h('div', { class: 'row', style: 'justify-content:space-between; margin-bottom:10px' },
     h('h2', { style: 'margin:0' }, 'Rules'),
-    h('span', { class: r.ranked ? 'pos' : 'muted', style: 'font-size:13px' },
-      r.ranked ? '🏆 Ranked (standard rules)' : 'Casual: custom rules, ratings unchanged'));
-  const sel = (id, label, values, cur) => h('label', { class: 'row', style: 'gap:8px; margin:6px 0' },
-    h('span', { class: 'grow' }, label),
+    h('span', { class: r.ranked ? 'pos' : 'muted', style: 'font-size:12px' },
+      r.ranked ? '🏆 Ranked · Standard' : 'Casual · Custom rules'));
+  const ruleIcons = {
+    draw2:'2️⃣', draw3:'3️⃣', kings:'👑', stackPenalties:'📚',
+    four:'⏭️', jack:'🃏', ace:'♠️', queenWild:'👸',
+    multiPlay:'✋', playAfterDraw:'🎴', makaoCall:'📣', noFinishOnFunctional:'🏁'
+  };
+  const ruleButtons = RULE_DEFS.map(([key, label]) => {
+    const enabled = !!R[key];
+    return h('button', {
+      type:'button',
+      class:'rule-toggle ' + (enabled ? 'is-on' : 'is-off') + (isHost ? '' : ' read-only'),
+      title:label,
+      'aria-label':label + (enabled ? ' enabled' : ' disabled'),
+      'aria-pressed':String(enabled),
+      disabled:!isHost,
+      onclick:() => setRules({ [key]:!R[key] })
+    },
+      h('span',{class:'rule-icon','aria-hidden':'true'},ruleIcons[key] || '🎮'),
+      h('span',{class:'rule-status','aria-hidden':'true'},enabled?'✓':'×'),
+      h('span',{class:'rule-tooltip'},label));
+  });
+  const setting = (id,label,values,current) => h('label',{class:'rule-setting'},
+    h('span',{},label),
     isHost
-      ? h('select', { id, onchange: (e) => setRules({ [id.slice(3)]: Number(e.target.value) }) },
-          [...new Set([...values, cur])].sort((a, b) => a - b).map((v) => h('option', { value: v, selected: v === cur }, id === 'rs_turnSeconds' ? v + 's' : v)))
-      : h('b', {}, id === 'rs_turnSeconds' ? cur + 's' : cur));
-  const list = h('div', {},
-    sel('rs_handSize', 'Starting cards', [3, 4, 5, 6, 7], R.handSize),
-    sel('rs_turnSeconds', 'Time per turn', [15, 30, 45, 60, 90, 120, 180], R.turnSeconds),
-    RULE_DEFS.map(([k, label]) => isHost
-      ? h('label', { class: 'row', style: 'gap:8px; margin:6px 0' },
-          h('input', { type: 'checkbox', checked: R[k], onchange: (e) => setRules({ [k]: e.target.checked }) }), label)
-      : h('div', { style: 'margin:6px 0; ' + (R[k] ? '' : 'opacity:.6') }, (R[k] ? '✅ ' : '❌ ') + label)));
+      ? h('select',{id,onchange:(e)=>setRules({[id.slice(3)]:Number(e.target.value)})},
+          [...new Set([...values,current])].sort((a,b)=>a-b).map(v=>h('option',{value:v,selected:v===current},id==='rs_turnSeconds'?v+' seconds':v+' cards')))
+      : h('strong',{},id==='rs_turnSeconds'?current+' seconds':current+' cards'));
+  const settings = h('div',{class:'rule-settings'},
+    setting('rs_handSize','Starting hand',[3,4,5,6,7],R.handSize),
+    setting('rs_turnSeconds','Time per turn',[15,30,45,60,90,120,180],R.turnSeconds));
   const changed = !r.ranked;
-  return h('div', { style: 'margin-top:14px; border-top:1px solid var(--line); padding-top:12px' }, head, list,
-    isHost && changed ? h('button', { class: 'alt', style: 'margin-top:6px', onclick: () => setRules({ ...DEFAULTS, turnSeconds: R.turnSeconds }) }, 'Reset to standard rules') : null,
-    isHost ? null : h('div', { class: 'muted', style: 'margin-top:6px' }, 'Only the host can change the rules.'));
+  return h('div',{class:'lobby-rules'},
+    head,
+    settings,
+    h('div',{class:'rule-button-grid'},ruleButtons),
+    isHost && changed ? h('button',{class:'alt',style:'margin-top:12px',onclick:()=>setRules({...DEFAULTS,turnSeconds:R.turnSeconds})},'↺ Reset standard rules') : null,
+    !isHost ? h('div',{class:'muted',style:'margin-top:10px'},'Only the host can change the rules.') : null);
 }
 const RULES = [
   'These are the standard rules. At a table, the host can switch any of them on or off before the game starts.',

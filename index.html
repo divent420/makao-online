@@ -169,6 +169,27 @@
     .shop-item-icon { width:48px; height:48px; min-height:48px; }
   }
 
+
+  /* Unified appearance shop: free styles and coin cosmetics share each category. */
+  .shop-note { margin:0 0 10px; }
+  .shop-section { margin-top:12px !important; padding:13px !important; }
+  .shop-section h2 { margin-bottom:10px; }
+  .shop-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .shop-item { min-height:0; padding:9px; gap:6px; }
+  .shop-item-icon { min-height:54px; height:54px; font-size:29px; }
+  .shop-item p { min-height:28px; line-height:1.3; }
+  .appearance-option.selected { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+  .appearance-option button { min-height:31px; padding:6px 9px; font-size:11px; }
+  .shape-grid { grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:12px; }
+  .shape-option { min-height:40px; padding:7px; }
+  .shape-option.selected { outline:2px solid var(--gold); }
+  .shop-preview { padding:12px; border-radius:12px; background:#0e1723; margin-bottom:10px; }
+  .shop-preview .card { width:44px; height:64px; font-size:14px; }
+  .shop-preview .card .s { font-size:19px; }
+  .shop-earn-note { margin-top:12px !important; padding:12px !important; }
+  @media(max-width:760px) { .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media(max-width:420px) { .shop-grid { grid-template-columns:1fr; } .shape-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
 </style>
 </head>
 <body>
@@ -552,30 +573,64 @@ function bottomNav(active) {
 function shopScreen() {
   if (!shopData && !shopLoading) loadShop();
   if (shopLoading && !shopData) {
-    mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel muted'},'Loading cosmetic shop…'),bottomNav('shop'))); return;
+    mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel muted'},'Loading appearance shop…'),bottomNav('shop'))); return;
   }
   if (shopError && !shopData) {
     mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel'},shopError,h('button',{class:'alt',onclick:loadShop},'Retry')),bottomNav('shop'))); return;
   }
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
-  const categories=[['card_back','Card backs'],['table_theme','Table themes'],['avatar_frame','Avatar frames']];
-  const content=[wallet,h('div',{class:'shop-customize'},...customizePanels()),h('div',{class:'muted shop-note'},'All items are cosmetic and never change cards, rules, odds or ratings. Real-money checkout is not enabled; this shop currently uses earnable coins.')];
-  for (const [category,title] of categories) {
-    const items=shopData.items.filter(i=>i.category===category);
-    const grid=h('div',{class:'shop-grid'});
-    for (const item of items) {
-      const action=async()=>{
-        const r=item.owned ? await api('/api/shop/equip',{cosmeticId:item.id}) : await api('/api/shop/buy',{cosmeticId:item.id});
-        if(r.error) return toast(r.error);
-        shopData=r.shop; applyShopEffects(); toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!'); render();
-      };
-      const label=item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
-      grid.append(h('article',{class:'shop-item'},h('div',{class:'shop-item-icon'},item.icon),h('strong',{},item.name),h('p',{},item.description),h('button',{class:item.equipped?'alt':'',disabled:item.equipped,onclick:action},label)));
+  const content=[wallet,h('div',{class:'muted shop-note'},'Choose any appearance option below. Free styles and coin cosmetics live together in one place.')];
+  const cardBacks=[
+    {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-forest',name:'Forest',icon:'🌲',free:true,selected:tableTheme.back==='forest',style:'background:repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',apply:()=>{tableTheme.back='forest';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-back-dark',name:'Graphite',icon:'⚫',free:true,selected:tableTheme.back==='dark',style:'background:repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)',apply:()=>{tableTheme.back='dark';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
+  ];
+  const tableThemes=[
+    {id:'free-felt-emerald',name:'Emerald',icon:'🌿',free:true,selected:tableTheme.felt==='emerald',style:'background:linear-gradient(135deg,#12634b,#073e31)',apply:()=>{tableTheme.felt='emerald';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-blue',name:'Ocean',icon:'🌊',free:true,selected:tableTheme.felt==='blue',style:'background:linear-gradient(135deg,#174d83,#102d50)',apply:()=>{tableTheme.felt='blue';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-purple',name:'Royal',icon:'🔮',free:true,selected:tableTheme.felt==='purple',style:'background:linear-gradient(135deg,#553b79,#2b1e46)',apply:()=>{tableTheme.felt='purple';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-red',name:'Burgundy',icon:'♦',free:true,selected:tableTheme.felt==='red',style:'background:linear-gradient(135deg,#783c3e,#401e29)',apply:()=>{tableTheme.felt='red';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
+    {id:'free-felt-midnight',name:'Midnight',icon:'🌑',free:true,selected:tableTheme.felt==='midnight',style:'background:linear-gradient(135deg,#343b46,#151c28)',apply:()=>{tableTheme.felt='midnight';localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}}
+  ];
+  function appearanceCard(item,category) {
+    if(item.free) {
+      return h('article',{class:'shop-item appearance-option'+(item.selected?' selected':'')},
+        h('div',{class:'shop-item-icon',style:item.style||''},item.icon),
+        h('strong',{},item.name),
+        h('p',{},'Free style'),
+        h('button',{class:item.selected?'alt':'',disabled:item.selected,onclick:item.apply},item.selected?'Selected':'Use style'));
     }
-    content.push(h('section',{class:'panel',style:'margin-top:14px'},h('h2',{},title),grid));
+    const action=async()=>{
+      const r=item.owned?await api('/api/shop/equip',{cosmeticId:item.id}):await api('/api/shop/buy',{cosmeticId:item.id});
+      if(r.error)return toast(r.error);
+      shopData=r.shop;applyShopEffects();toast(item.owned?'Cosmetic equipped':'Cosmetic purchased!');render();
+    };
+    const label=item.equipped?'Equipped':item.owned?'Equip':'🪙 '+item.price;
+    return h('article',{class:'shop-item appearance-option'+(item.equipped?' selected':'')},
+      h('div',{class:'shop-item-icon'},item.icon),h('strong',{},item.name),h('p',{},item.description),
+      h('button',{class:item.equipped?'alt':'',disabled:item.equipped,onclick:action},label));
   }
-  content.push(h('div',{class:'panel muted',style:'margin-top:14px'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server.'));
-  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Customize & Shop'),...content,bottomNav('shop')));
+  const sections=[
+    {title:'Card backs',category:'card_back',items:[...cardBacks,...shopData.items.filter(i=>i.category==='card_back')]},
+    {title:'Table themes',category:'table_theme',items:[...tableThemes,...shopData.items.filter(i=>i.category==='table_theme')]},
+    {title:'Avatar frames',category:'avatar_frame',items:shopData.items.filter(i=>i.category==='avatar_frame')}
+  ];
+  for(const section of sections) {
+    const grid=h('div',{class:'shop-grid'});
+    section.items.forEach(item=>grid.append(appearanceCard(item,section.category)));
+    content.push(h('section',{class:'panel shop-section'},h('h2',{},section.title),grid));
+  }
+  const shapes=[
+    ['classic','Classic'],['round','Extra rounded'],['sharp','Sharp corners']
+  ];
+  const shapeGrid=h('div',{class:'shop-grid shape-grid'});
+  shapes.forEach(([id,label])=>shapeGrid.append(h('button',{class:'alt shape-option'+(tableTheme.cards===id?' selected':''),disabled:tableTheme.cards===id,onclick:()=>{tableTheme.cards=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
+  const preview=h('div',{class:'shop-preview'},h('div',{class:'row',style:'gap:10px;justify-content:center'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'})));
+  content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape & preview'),shapeGrid,preview,
+    h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
+  content.push(h('div',{class:'panel muted shop-earn-note'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server. All cosmetics are gameplay-neutral.'));
+  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Appearance'),...content,bottomNav('shop')));
 }
 
 function profileScreen() {

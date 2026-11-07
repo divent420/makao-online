@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makao</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%82%A1%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --felt: #0f5132; --felt2: #0b3d26; --gold: #ffd54a; --panel: #1b1f27; --line: #2c3340; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px system-ui, sans-serif; background: #12151b; color: #eee; min-height: 100vh; }
+  button, input, select { font: inherit; }
+  input, select { background: #0e1117; color: #eee; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  button { background: #2f6df0; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+  button.alt { background: #343b4a; }
+  button.warn { background: #b3402f; }
+  button:disabled { opacity: .4; cursor: default; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .bar h1 { margin: 0; font-size: 22px; flex: 1; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  h2 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: #9aa4b5; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .list > div { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .list > div:last-child { border: 0; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: #8b95a7; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 5px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th { color: #8b95a7; font-weight: 500; font-size: 12px; }
+  .me { color: var(--gold); }
+  .auth { max-width: 340px; margin: 12vh auto; display: grid; gap: 10px; }
+  .err { color: #ff8a80; min-height: 18px; font-size: 13px; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #b3402f; padding: 8px 16px; border-radius: 8px; display: none; z-index: 20; }
+  #chat { height: 150px; overflow-y: auto; background: #0e1117; border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 8px; }
+  #chat b { color: var(--gold); }
+
+  /* table */
+  .table { background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt2) 100%); border-radius: 16px; padding: 14px; min-height: 520px; display: flex; flex-direction: column; gap: 14px; border: 1px solid #0a2c1c; }
+  .opps { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .opp { background: #0006; border-radius: 10px; padding: 8px 12px; min-width: 120px; text-align: center; border: 2px solid transparent; }
+  .opp.turn { border-color: var(--gold); }
+  .opp.out { opacity: .4; }
+  .mini { display: flex; justify-content: center; margin-top: 4px; min-height: 28px; }
+  .mini i { width: 14px; height: 24px; margin-left: -6px; border-radius: 3px; background: repeating-linear-gradient(45deg, #2b4fa8, #2b4fa8 3px, #3a63c9 3px, #3a63c9 6px); border: 1px solid #fff8; display: block; }
+  .mini i:first-child { margin-left: 0; }
+  .center { display: flex; gap: 22px; align-items: center; justify-content: center; flex: 1; flex-wrap: wrap; }
+  .card { width: 60px; height: 86px; background: #fff; color: #111; border-radius: 8px; border: 1px solid #0006; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 5px 6px; font-weight: 700; font-size: 17px; line-height: 1; user-select: none; position: relative; }
+  .card.red { color: #c62828; }
+  .card .s { font-size: 24px; text-align: center; line-height: 1; }
+  .card .r2 { transform: rotate(180deg); align-self: flex-end; }
+  .card.back { background: repeating-linear-gradient(45deg, #2b4fa8, #2b4fa8 6px, #3a63c9 6px, #3a63c9 12px); border: 2px solid #fff; cursor: pointer; }
+  .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+  .hand .card { cursor: pointer; transition: transform .1s; }
+  .hand .card.dim { opacity: .45; }
+  .hand .card.legal { box-shadow: 0 0 0 2px var(--gold); }
+  .hand .card.sel { transform: translateY(-14px); box-shadow: 0 0 0 3px #4fc3f7; }
+  .banner { text-align: center; font-weight: 600; min-height: 22px; }
+  .banner span { background: #0007; padding: 4px 12px; border-radius: 20px; }
+  .banner .bad { color: #ff8a80; }
+  .actions { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; min-height: 40px; }
+  .log { font-size: 12px; color: #cfe8d8; text-align: center; min-height: 36px; }
+  .suit { font-size: 28px; }
+  .pick { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .pick button { min-width: 48px; font-size: 20px; }
+  .overlay { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .overlay .panel { min-width: 280px; text-align: center; }
+  .pos { color: #69f0ae; } .neg { color: #ff8a80; }
+  details { margin-top: 10px; } summary { cursor: pointer; color: #9aa4b5; }
+  ul.rules { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #b9c1cf; line-height: 1.5; }
+
+  /* Makao UI theme tokens: graphic assets can replace card/table layers independently. */
+  :root { --felt:#12634b; --felt2:#073e31; --gold:#f7c95c; --panel:#171f2b; --line:#2c394a; --accent:#7c9cff; --surface:#202b3a; --text:#f4f6fb; --muted:#a6b1c2; --card-radius:12px; --table-pattern:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt2) 100%); --back-pattern:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px); }
+  body { background:linear-gradient(145deg,#0b111a,#111b29 55%,#0b111a); color:var(--text); font-family:Inter,Roboto,system-ui,sans-serif; letter-spacing:.01em; }
+  button { background:var(--accent); border-radius:12px; padding:11px 16px; font-weight:650; box-shadow:0 3px 10px #0003; transition:transform .12s,filter .12s; }
+  button:active { transform:scale(.97); filter:brightness(1.12); }
+  button.alt { background:#344256; } button.warn { background:#b94c50; }
+  input,select { border-radius:12px; padding:11px 13px; min-height:44px; background:#101925; border-color:#354458; }
+  .wrap { max-width:1120px; padding:20px; }
+  .bar { min-height:58px; padding:8px 2px 16px; }
+  .bar h1 { font-size:25px; letter-spacing:-.04em; }
+  .panel { background:linear-gradient(155deg,#1c2838,#151e2b); border:1px solid #344255; border-radius:20px; padding:18px; box-shadow:0 12px 32px #0002; }
+  h2 { color:#b7c5d9; font-size:12px; letter-spacing:.12em; }
+  .grid { gap:18px; }
+  .list>div { padding:12px 4px; }
+  .auth { max-width:390px; margin:10vh auto; padding:26px; background:#172231; border:1px solid #354458; border-radius:24px; box-shadow:0 20px 60px #0005; }
+  .table { background:var(--table-pattern); border-radius:24px; border:1px solid #ffffff26; padding:clamp(14px,3vw,28px); min-height:600px; box-shadow:inset 0 0 45px #0004,0 18px 45px #0004; }
+  .card { width:clamp(52px,6.2vw,72px); height:clamp(76px,9vw,104px); border-radius:var(--card-radius); padding:6px 7px; font-size:18px; box-shadow:0 5px 12px #0004; }
+  .card .s { font-size:28px; } .card.back { background:var(--back-pattern); border:3px solid #f5f2e9; }
+  .hand { gap:clamp(3px,1vw,9px); padding:14px 4px 4px; }
+  .hand .card { margin-top:8px; } .hand .card.sel { transform:translateY(-12px); }
+  .opp { border-radius:14px; background:#071b17a8; backdrop-filter:blur(8px); padding:10px 14px; }
+  .actions button { min-height:46px; }
+  .banner span { padding:8px 15px; }
+  .profile-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff1c; color:#fff; }
+  .avatar { width:42px; height:42px; display:inline-grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#455a78,#26374f); font-size:23px; flex:none; }
+  .avatar.big { width:76px; height:76px; font-size:40px; }
+  .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .swatch { min-height:54px; border:2px solid #ffffff24; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-weight:650; }
+  .swatch.active { outline:3px solid var(--accent); outline-offset:2px; }
+  .screen-title { font-size:27px; font-weight:800; letter-spacing:-.04em; margin:8px 0 18px; }
+  .bottom-nav { display:none; }
+  @media(max-width:760px) {
+    .wrap { padding:12px 12px 86px; }
+    .bar { gap:8px; } .bar h1 { font-size:21px; }
+    .grid { grid-template-columns:1fr; }
+    .table { min-height:calc(100dvh - 150px); padding:12px 8px; gap:10px; border-radius:18px; }
+    .opps { gap:6px; } .opp { min-width:88px; padding:7px 8px; font-size:12px; }
+    .center { gap:14px; min-height:110px; }
+    .hand { justify-content:center; gap:3px; }
+    .hand .card { width:clamp(42px,12vw,58px); height:clamp(64px,18vw,82px); padding:4px; font-size:15px; }
+    .hand .card .s { font-size:21px; }
+    .actions { position:sticky; bottom:72px; z-index:3; padding:8px; border-radius:16px; background:#101925eF; backdrop-filter:blur(12px); }
+    .actions button { flex:1; min-width:105px; }
+    .bottom-nav { display:flex; position:fixed; z-index:8; left:10px; right:10px; bottom:10px; padding:7px; border:1px solid #ffffff22; border-radius:18px; background:#172333ed; backdrop-filter:blur(18px); justify-content:space-around; box-shadow:0 8px 30px #0006; }
+    .bottom-nav button { background:transparent; box-shadow:none; padding:8px 10px; display:grid; gap:2px; justify-items:center; font-size:11px; color:#c8d3e3; }
+    .bottom-nav button span:first-child { font-size:19px; }
+    .settings-grid { grid-template-columns:1fr 1fr; }
+    .auth { margin:7vh 12px; }
+  }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+const SYM = { S: '♠', H: '♥', D: '♦', C: '♣' };
+const $ = (id) => document.getElementById(id);
+const app = $('app');
+
+let token = localStorage.getItem('mk_token');
+let S = null;               // latest server state
+let es = null;
+let board = [];             // leaderboard rows
+let sel = [];               // selected hand cards
+let choose = null;          // pending Jack/Ace choice: { kind, cards }
+let sayMakao = false;
+let authErr = '';
+let activeScreen = 'home';
+let profileAvatar = null;
+const THEME_DEFAULT = { felt:'emerald', back:'royal', cards:'classic' };
+let tableTheme = { ...THEME_DEFAULT, ...JSON.parse(localStorage.getItem('mk_theme') || '{}') };
+function applyTheme() {
+  const root=document.documentElement;
+  const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
+  const backs={royal:'repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',ruby:'repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',forest:'repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',dark:'repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)'};
+  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); root.style.setProperty('--card-radius',tableTheme.cards==='sharp'?'4px':tableTheme.cards==='round'?'16px':'12px');
+}
+applyTheme();
+let dismissed = Number(localStorage.getItem('mk_dismissed') || 0);
+
+const rank = (c) => c.slice(0, -1), suit = (c) => c.slice(-1);
+
+// ---------- network ----------
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+async function api(path, body, method) {
+  const r = await fetch(path, {
+    method: method || (body ? 'POST' : 'GET'),
+    headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return r.json().catch(() => ({}));
+}
+async function act(m) {
+  const r = await api('/api/act', m);
+  if (r.error) toast(r.error);
+  return r;
+}
+async function auth(kind) {
+  const username = $('u').value, password = $('p').value;
+  const r = await api('/api/' + kind, { username, password });
+  if (r.error) { authErr = r.error; return render(); }
+  token = r.token; localStorage.setItem('mk_token', token); authErr = '';
+  connect();
+}
+async function logout() {
+  await api('/api/logout', {});
+  localStorage.removeItem('mk_token'); token = null; S = null;
+  if (es) es.close();
+  render();
+}
+function connect() {
+  if (es) es.close();
+  es = new EventSource('/events?token=' + encodeURIComponent(token));
+  es.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'state') {
+      const prevTurn = S && S.game ? S.game.myTurn : false;
+      S = m;
+      sel = sel.filter((c) => S.game && S.game.hand.includes(c));
+      if (!S.game || !S.game.myTurn) { sel = []; choose = null; sayMakao = false; }
+      else if (!prevTurn) { try { navigator.vibrate && navigator.vibrate(60); } catch (_) {} }
+      render();
+    }
+  };
+  es.onerror = async () => {
+    const r = await fetch('/api/me', { headers: { 'x-token': token || '' } });
+    if (r.status === 401) { localStorage.removeItem('mk_token'); token = null; S = null; es.close(); render(); }
+  };
+}
+async function loadBoard() {
+  const r = await api('/api/leaderboard');
+  board = r.rows || [];
+  if (S && !S.room) render();
+}
+
+// ---------- rendering helpers ----------
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else if (v !== false && v != null) el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return el;
+}
+function cardEl(c, opts = {}) {
+  const red = suit(c) === 'H' || suit(c) === 'D';
+  return h('div', { class: 'card' + (red ? ' red' : '') + (opts.cls ? ' ' + opts.cls : ''), onclick: opts.onclick },
+    h('div', {}, rank(c)), h('div', { class: 's' }, SYM[suit(c)]), h('div', { class: 'r2' }, rank(c)));
+}
+function suitEl(s) {
+  const red = s === 'H' || s === 'D';
+  return h('span', { class: 'suit', style: 'color:' + (red ? '#ff6b6b' : '#fff') }, SYM[s]);
+}
+function mount(node) {
+  // keep focus/typed text in inputs across re-renders
+  const a = document.activeElement;
+  const keep = a && a.id ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  app.replaceChildren(node);
+  if (keep) {
+    const el = $(keep.id);
+    if (el) { el.value = keep.value; el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (_) {} }
+  }
+}
+function chatBox(room) {
+  const box = h('div', { id: 'chat' });
+  room.chat.forEach((m) => box.append(h('div', {}, h('b', {}, m.from + ': '), m.text)));
+  setTimeout(() => { const c = $('chat'); if (c) c.scrollTop = c.scrollHeight; });
+  const inp = h('input', { id: 'chatIn', placeholder: 'Message the table…', maxlength: 200, style: 'width:100%',
+    onkeydown: (e) => { if (e.key === 'Enter' && e.target.value.trim()) { act({ t: 'chat', text: e.target.value }); e.target.value = ''; } } });
+  return h('div', {}, box, inp);
+}
+function topBar() {
+  const me=S.me;
+  return h('div', { class: 'bar' },
+    h('h1', {}, '🂡 Makao'),
+    h('button', { class:'alt profile-chip', onclick:()=>{activeScreen='profile';render();} }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
+    h('button', { class: 'alt', onclick: logout, title:'Log out' }, '↗'));
+}
+const DEFAULTS = {
+  handSize: 5, draw2: true, draw3: true, kings: true, stackPenalties: true, four: true, jack: true, ace: true,
+  queenWild: true, multiPlay: true, playAfterDraw: true, makaoCall: true, noFinishOnFunctional: true, turnSeconds: 60,
+};
+const RULE_DEFS = [
+  ['draw2', '2: next player draws 2'],
+  ['draw3', '3: next player draws 3'],
+  ['kings', 'K♥ / K♠: next player draws 5'],
+  ['stackPenalties', 'Penalties stack (answer with another penalty card, or a 4 with a 4)'],
+  ['four', '4: next player waits a turn'],
+  ['jack', 'Jack: demand a rank (5-10)'],
+  ['ace', 'Ace: choose the suit'],
+  ['queenWild', 'Queen is wild (on anything, anything on it)'],
+  ['multiPlay', 'Play several cards of one rank at once'],
+  ['playAfterDraw', 'May play the card you just drew'],
+  ['makaoCall', 'Must say “Makao!” on the second-to-last card'],
+  ['noFinishOnFunctional', "Can't win with a special card"],
+];
+function setRules(patch) { act({ t: 'setRules', rules: { ...S.room.rules, ...patch } }); }
+function rulesPanel(r, isHost) {
+  const R = r.rules;
+  const head = h('div', { class: 'row', style: 'justify-content:space-between; margin-bottom:6px' },
+    h('h2', { style: 'margin:0' }, 'Rules'),
+    h('span', { class: r.ranked ? 'pos' : 'muted', style: 'font-size:13px' },
+      r.ranked ? '🏆 Ranked (standard rules)' : 'Casual: custom rules, ratings unchanged'));
+  const sel = (id, label, values, cur) => h('label', { class: 'row', style: 'gap:8px; margin:6px 0' },
+    h('span', { class: 'grow' }, label),
+    isHost
+      ? h('select', { id, onchange: (e) => setRules({ [id.slice(3)]: Number(e.target.value) }) },
+          [...new Set([...values, cur])].sort((a, b) => a - b).map((v) => h('option', { value: v, selected: v === cur }, id === 'rs_turnSeconds' ? v + 's' : v)))
+      : h('b', {}, id === 'rs_turnSeconds' ? cur + 's' : cur));
+  const list = h('div', {},
+    sel('rs_handSize', 'Starting cards', [3, 4, 5, 6, 7], R.handSize),
+    sel('rs_turnSeconds', 'Time per turn', [15, 30, 45, 60, 90, 120, 180], R.turnSeconds),
+    RULE_DEFS.map(([k, label]) => isHost
+      ? h('label', { class: 'row', style: 'gap:8px; margin:6px 0' },
+          h('input', { type: 'checkbox', checked: R[k], onchange: (e) => setRules({ [k]: e.target.checked }) }), label)
+      : h('div', { style: 'margin:6px 0; ' + (R[k] ? '' : 'opacity:.6') }, (R[k] ? '✅ ' : '❌ ') + label)));
+  const changed = !r.ranked;
+  return h('div', { style: 'margin-top:14px; border-top:1px solid var(--line); padding-top:12px' }, head, list,
+    isHost && changed ? h('button', { class: 'alt', style: 'margin-top:6px', onclick: () => setRules({ ...DEFAULTS, turnSeconds: R.turnSeconds }) }, 'Reset to standard rules') : null,
+    isHost ? null : h('div', { class: 'muted', style: 'margin-top:6px' }, 'Only the host can change the rules.'));
+}
+const RULES = [
+  'These are the standard rules. At a table, the host can switch any of them on or off before the game starts.',
+  '5 cards each. Match the top card by suit or rank. You can play several cards of the same rank at once.',
+  '2 / 3: next player draws 2 / 3. K♥ / K♠: draws 5. These stack: answer with any 2, 3, K♥ or K♠, or take the cards.',
+  '4: next player waits. 4s stack; answer with a 4 or wait.',
+  'J: demand a rank 5-10 for one round. Everyone plays that rank (or a J) or draws.',
+  'A: choose the suit. Q: goes on anything, and anything goes on a Q.',
+  "Can't play? Draw one card; you may play it. Playing down to one card? Tick “Makao!” or draw 2.",
+  "You can't win on a 2, 3, 4, J, A, K♥ or K♠. First empty hand wins; Elo rating changes after every game.",
+];
+
+// ---------- screens ----------
+function authScreen() {
+  mount(h('div', { class: 'auth' },
+    h('h1', { style: 'text-align:center;font-size:32px;letter-spacing:-.05em' }, '🂡 Makao'),
+    h('div', { class:'muted', style:'text-align:center;margin-top:-8px;margin-bottom:8px' }, 'Your table. Your rules. Your game.'),
+    h('input', { id: 'u', placeholder: 'Username', autocomplete: 'username', maxlength: 16 }),
+    h('input', { id: 'p', type: 'password', placeholder: 'Password', autocomplete: 'current-password',
+      onkeydown: (e) => { if (e.key === 'Enter') auth('login'); } }),
+    h('div', { class: 'err' }, authErr),
+    h('div', { class: 'row' },
+      h('button', { onclick: () => auth('login'), style: 'flex:1' }, 'Log in'),
+      h('button', { class: 'alt', onclick: () => auth('register'), style: 'flex:1' }, 'Create account')),
+    h('div', { class: 'muted', style: 'text-align:center' }, 'Username 3-16 letters/digits/_, password 6+ chars')));
+}
+
+function lobbyScreen() {
+  const list = h('div', { class: 'list' });
+  if (!S.lobbies.length) list.append(h('div', { class: 'muted' }, 'No tables yet. Create the first table!'));
+  S.lobbies.forEach((l) => list.append(h('div', {},
+    h('div', { class: 'grow' }, h('b', {}, l.name), h('div', { class: 'muted' }, 'host ' + l.host + ' · ' + l.count + '/' + l.max + (l.playing ? ' · playing' : '') + (l.ranked ? '' : ' · custom rules'))),
+    h('button', { disabled: l.playing || l.count >= l.max, onclick: () => act({ t: 'joinRoom', id: l.id }) }, 'Join'))));
+  const tbl = h('table', {}, h('tr', {}, h('th', {}, '#'), h('th', {}, 'Player'), h('th', {}, 'Rating'), h('th', {}, 'W / G')));
+  board.slice(0, 15).forEach((r, i) => tbl.append(h('tr', { class: r.username === S.me.username ? 'me' : '' }, h('td', {}, i + 1), h('td', {}, r.username), h('td', {}, r.rating), h('td', {}, r.wins + ' / ' + r.games))));
+  if (!board.length) tbl.append(h('tr', {}, h('td', { colspan: 4, class: 'muted' }, 'No ranked games yet')));
+  const nav=bottomNav('home');
+  mount(h('div', { class: 'wrap' }, topBar(),
+    h('div',{class:'screen-title'},'Find your table'),
+    h('div', { class: 'grid' },
+      h('div', { class: 'panel' },
+        h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Open tables'),h('span',{class:'muted'},S.lobbies.length+' available')),
+        list,
+        h('h2', { style: 'margin-top:18px' }, 'Create a table'),
+        h('div', { class: 'row' },
+          h('input', { id: 'rn', placeholder: S.me.displayName + "'s table", maxlength: 30, class: 'grow' }),
+          h('select', { id: 'rm' }, [4, 3, 2].map((n) => h('option', { value: n }, n + ' players'))),
+          h('button', { onclick: () => act({ t: 'createRoom', name: $('rn').value, max: Number($('rm').value) }) }, '+ Create'))),
+      h('div', { class: 'panel' },
+        h('h2', {}, 'Leaderboard'), tbl,
+        h('div', { class: 'muted', style: 'margin-top:12px' }, 'Your record: ' + S.me.wins + ' wins / ' + S.me.games + ' games'),
+        h('button',{class:'alt',style:'margin-top:14px;width:100%',onclick:()=>{activeScreen='customize';render();}},'🎨 Customize your table'))),
+    h('details', { class: 'panel', style: 'margin-top:14px' }, h('summary', {}, 'How to play'), h('ul', { class: 'rules' }, RULES.map((r) => h('li', {}, r)))),nav));
+}
+
+function bottomNav(active) {
+  return h('nav',{class:'bottom-nav'},
+    h('button',{onclick:()=>{activeScreen='home';render();}},h('span',{},'♣'),h('span',{},'Lobby')),
+    h('button',{onclick:()=>{activeScreen='customize';render();}},h('span',{},'🎨'),h('span',{},'Table')),
+    h('button',{onclick:()=>{activeScreen='profile';render();}},h('span',{},'👤'),h('span',{},'Profile')));
+}
+
+function profileScreen() {
+  const me=S.me; if(profileAvatar===null) profileAvatar=me.avatar||'🂡'; const avatars=['🂡','😎','🦊','🐺','🐱','🐼','🐸','👑','🔥','🎯','🦄','🐉'];
+  const avatar=profileAvatar||me.avatar||'🂡';
+  const nameInput=h('input',{id:'profileName',maxlength:20,value:me.displayName||me.username,style:'width:100%'});
+  const bioInput=h('input',{id:'profileBio',maxlength:80,value:me.bio||'',placeholder:'A little about you',style:'width:100%'});
+  const save=async()=>{const r=await api('/api/profile',{displayName:$('profileName').value,bio:$('profileBio').value,avatar:profileAvatar});if(r.error)return toast(r.error);S.me=r.user;profileAvatar=r.user.avatar;toast('Profile saved');activeScreen='profile';render();};
+  const avatarRow=h('div',{class:'row',style:'gap:8px'},avatars.map(a=>h('button',{class:a===avatar?'':'alt',style:'font-size:22px;padding:8px 10px',onclick:()=>{profileAvatar=a;render();}},a)));
+  const form=h('div',{class:'panel'},h('div',{class:'row'},h('span',{class:'avatar big'},avatar),h('div',{},h('div',{style:'font-size:22px;font-weight:800'},me.displayName||me.username),h('div',{class:'muted'},'@'+me.username))),
+    h('h2',{style:'margin-top:20px'},'Choose avatar'),avatarRow,h('input',{id:'avatarPick',type:'hidden',value:avatar}),
+    h('h2',{style:'margin-top:20px'},'Display name'),nameInput,h('h2',{style:'margin-top:16px'},'Bio'),bioInput,
+    h('div',{class:'grid',style:'grid-template-columns:repeat(3,1fr);margin-top:18px'},[['Rating',me.rating],['Wins',me.wins],['Games',me.games]].map(([k,v])=>h('div',{class:'panel',style:'text-align:center;padding:12px'},h('div',{style:'font-size:23px;font-weight:800'},v),h('div',{class:'muted'},k)))),
+    h('button',{style:'width:100%;margin-top:18px',onclick:save},'Save profile'));
+  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Player profile'),form,bottomNav('profile')));
+}
+
+function customizeScreen() {
+  const options=(key,items)=>h('div',{class:'settings-grid'},items.map(([id,label,style])=>h('div',{class:'swatch'+(tableTheme[key]===id?' active':''),style:style||'',onclick:()=>{tableTheme[key]=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
+  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Make it your table'),
+    h('div',{class:'panel'},h('h2',{},'Table felt'),options('felt',[
+      ['emerald','🌿 Emerald','background:linear-gradient(135deg,#12634b,#073e31)'],['blue','🌊 Ocean','background:linear-gradient(135deg,#174d83,#102d50)'],['purple','🔮 Royal','background:linear-gradient(135deg,#553b79,#2b1e46)'],['red','♦ Burgundy','background:linear-gradient(135deg,#783c3e,#401e29)'],['midnight','🌑 Midnight','background:linear-gradient(135deg,#343b46,#151c28)']])),
+    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Card backs'),options('back',[
+      ['royal','🔷 Royal blue','background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)'],['ruby','♦ Ruby','background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)'],['forest','🌲 Forest','background:repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)'],['dark','⚫ Graphite','background:repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)']])),
+    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Card shape'),options('cards', [['classic','Classic'],['round','Extra rounded'],['sharp','Sharp corners']])),
+    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Live preview'),h('div',{class:'table',style:'min-height:190px;justify-content:center;align-items:center'},h('div',{class:'row',style:'gap:10px'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'}))),h('button',{class:'alt',style:'width:100%;margin-top:14px',onclick:()=>{tableTheme={...THEME_DEFAULT};localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset appearance')),
+    bottomNav('table')));
+}
+
+function roomScreen() {
+  const r = S.room;
+  const isHost = r.host === S.me.id;
+  const members = h('div', { class: 'list' });
+  r.members.forEach((m) => members.append(h('div', {},
+    h('div', { class: 'grow' }, (m.avatar||'🂡')+' '+(m.displayName||m.username) + (m.id === r.host ? ' 👑' : '') + (m.id === S.me.id ? ' (you)' : ''),
+      h('span', { class: 'muted' }, ' · ' + m.rating + (m.online ? '' : ' · offline'))))));
+  const nodes = [topBar(), h('div', { class: 'grid' },
+    h('div', { class: 'panel' },
+      h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
+      h('div', { class: 'row', style: 'margin-top:12px' },
+        isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…'),
+        h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
+      rulesPanel(r, isHost)),
+    h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r)))];
+  if (r.result && r.result.id > dismissed) nodes.push(resultOverlay(r.result));
+  mount(h('div', { class: 'wrap' }, nodes));
+}
+
+function resultOverlay(res) {
+  const tbl = h('table', {});
+  res.rows.forEach((x) => tbl.append(h('tr', {},
+    h('td', {}, (x.won ? '🏆 ' : '') + x.username), h('td', {}, x.rating),
+    h('td', { class: x.delta >= 0 ? 'pos' : 'neg' }, (x.delta >= 0 ? '+' : '') + x.delta))));
+  return h('div', { class: 'overlay' }, h('div', { class: 'panel' },
+    h('h2', {}, res.winnerId === S.me.id ? '🎉 You won!' : res.winner + ' wins'),
+    res.ranked ? tbl : h('div', { class: 'muted' }, 'Casual game (custom rules): ratings unchanged'),
+    h('button', { style: 'margin-top:12px', onclick: () => { dismissed = res.id; localStorage.setItem('mk_dismissed', dismissed); render(); } }, 'OK')));
+}
+
+function playSelected() {
+  if (!sel.length) return;
+  const r = rank(sel[sel.length - 1]);
+  if (r === 'J' && S.game.rules.jack) { choose = { kind: 'demand', cards: [...sel] }; return render(); }
+  if (r === 'A' && S.game.rules.ace) { choose = { kind: 'suit', cards: [...sel] }; return render(); }
+  sendPlay(sel, {});
+}
+function sendPlay(cards, extra) {
+  act({ t: 'play', cards, makao: sayMakao, ...extra }).then((r) => { if (!r.error) { sel = []; choose = null; sayMakao = false; } render(); });
+}
+function clickCard(c) {
+  const g = S.game;
+  if (!g.myTurn) return;
+  if (sel.includes(c)) sel = sel.filter((x) => x !== c);
+  else if (!sel.length) { if (!g.legal.includes(c)) return toast("You can't play that card now"); sel = [c]; }
+  else if (g.rules.multiPlay && rank(sel[0]) === rank(c) && !g.drew && !g.pending) sel.push(c);
+  else if (g.rules.multiPlay && rank(sel[0]) === rank(c) && !g.drew && g.legal.includes(c)) sel.push(c);
+  else if (g.legal.includes(c)) sel = [c];
+  else return toast('Pick cards of the same rank');
+  render();
+}
+
+function gameScreen() {
+  const g = S.game;
+  const opps = h('div', { class: 'opps' });
+  g.players.filter((p) => p.id !== S.me.id).forEach((p) => {
+    const mini = h('div', { class: 'mini' });
+    for (let i = 0; i < Math.min(p.count, 12); i++) mini.append(h('i'));
+    opps.append(h('div', { class: 'opp' + (p.turn ? ' turn' : '') + (p.out ? ' out' : '') },
+      h('b', {}, p.name), h('div', { class: 'muted' }, p.out ? 'left' : p.count + ' cards' + (p.wait ? ' · waits ' + p.wait : '')), mini));
+  });
+
+  const pend = g.pending, dem = g.demand;
+  const banner = h('div', { class: 'banner' });
+  const canStack = g.rules.stackPenalties;
+  if (pend) banner.append(h('span', { class: 'bad' }, pend.type === 'draw'
+    ? 'Draw ' + pend.n + ' cards' + (canStack ? ', or answer with a penalty card (2 / 3 / K♥ / K♠)' : '')
+    : 'Wait ' + pend.n + (pend.n > 1 ? ' turns' : ' turn') + (canStack ? ', or answer with a 4' : '')));
+  else if (dem) banner.append(h('span', {}, 'Jack demands ' + dem.rank + ' (or play a J)'));
+
+  const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
+  const center = h('div', { class: 'center' },
+    h('div', { style: 'text-align:center' }, drawPile, h('div', { class: 'muted' }, g.deckCount + ' left')),
+    h('div', { style: 'text-align:center' }, cardEl(g.top), h('div', {}, 'suit ', suitEl(g.suit))));
+
+  const hand = h('div', { class: 'hand' });
+  g.hand.forEach((c) => hand.append(cardEl(c, {
+    cls: (sel.includes(c) ? 'sel ' : '') + (g.myTurn ? (g.legal.includes(c) ? 'legal' : 'dim') : ''),
+    onclick: () => clickCard(c),
+  })));
+
+  const actions = h('div', { class: 'actions' });
+  if (choose) {
+    if (choose.kind === 'demand') {
+      actions.append('Demand a rank:', h('div', { class: 'pick' }, ['5', '6', '7', '8', '9', '10'].map((r) => h('button', { onclick: () => sendPlay(choose.cards, { demand: r }) }, r))));
+    } else {
+      actions.append('Choose a suit:', h('div', { class: 'pick' }, ['S', 'H', 'D', 'C'].map((s) => h('button', { class: 'alt', style: 'color:' + (s === 'H' || s === 'D' ? '#ff6b6b' : '#fff'), onclick: () => sendPlay(choose.cards, { suit: s }) }, SYM[s]))));
+    }
+    actions.append(h('button', { class: 'alt', onclick: () => { choose = null; render(); } }, 'Cancel'));
+  } else if (g.myTurn) {
+    const left = g.hand.length - sel.length;
+    actions.append(h('button', { disabled: !sel.length, onclick: playSelected }, sel.length ? 'Play ' + sel.length + (sel.length > 1 ? ' cards' : ' card') : 'Pick a card'));
+    if (sel.length && left === 1 && g.rules.makaoCall) actions.append(h('label', {}, h('input', { type: 'checkbox', checked: sayMakao, onchange: (e) => { sayMakao = e.target.checked; } }), ' Say “Makao!”'));
+    if (pend && pend.type === 'skip') actions.append(h('button', { class: 'warn', onclick: () => act({ t: 'wait' }) }, 'Wait'));
+    else if (pend) actions.append(h('button', { class: 'warn', onclick: () => act({ t: 'draw' }) }, 'Take ' + pend.n + ' cards'));
+    else if (g.drew) actions.append(h('button', { class: 'alt', onclick: () => act({ t: 'pass' }) }, 'Pass'));
+    else actions.append(h('button', { class: 'alt', onclick: () => act({ t: 'draw' }) }, 'Draw a card'));
+  } else {
+    const cur = g.players.find((p) => p.turn);
+    actions.append(h('span', { class: 'muted' }, cur ? cur.name + "'s turn" : ''));
+  }
+
+  const timer = h('div', { class: 'muted', id: 'timer', style: 'text-align:center' });
+  mount(h('div', { class: 'wrap' },
+    h('div', { class: 'bar' }, h('h1', {}, '🂡 Makao · ' + S.room.name + (S.room.ranked ? '' : ' · casual')), h('button', { class:'alt profile-chip', onclick:()=>{activeScreen='profile';render();} }, (S.me.avatar||'🂡')+' '+(S.me.displayName||S.me.username)),
+      h('button', { class: 'alt', onclick: () => { if (confirm('Leave the game? This counts as a loss.')) act({ t: 'leaveRoom' }); } }, 'Leave')),
+    h('div', { class: 'table' }, opps, banner, center,
+      h('div', { class: 'log' }, g.log.slice(-3).map((l) => h('div', {}, l))),
+      timer, actions, hand),
+    h('div', { class: 'panel', style: 'margin-top:12px' }, chatBox(S.room))));
+  tick();
+}
+function tick() {
+  const t = $('timer');
+  if (!t || !S || !S.game) return;
+  const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
+  t.textContent = S.game.myTurn ? 'Your turn · ' + s + 's' : s + 's';
+  t.style.color = S.game.myTurn && s <= 10 ? '#ff8a80' : '';
+}
+setInterval(tick, 500);
+
+function render() {
+  if (!token) return authScreen();
+  if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
+  if (activeScreen === 'profile') return profileScreen();
+  if (activeScreen === 'customize') return customizeScreen();
+  if (S.game) return gameScreen();
+  if (S.room) return roomScreen();
+  lobbyScreen();
+}
+
+render();
+if (token) connect();
+loadBoard(); setInterval(() => { if (token && S && !S.room) loadBoard(); }, 15000);
+</script>
+</body>
+</html>

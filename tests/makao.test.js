@@ -124,3 +124,19 @@ test('clamps deck count and hand size to supported limits', () => {
   assert.equal(rules.deckCount, 4);
   assert.equal(rules.handSize, 12);
 });
+
+
+test('duplicate physical cards in multi-deck games remain individually playable', () => {
+  const game = state({
+    rules: M.sanitizeRules({ deckCount: 2, makaoCall: false }),
+    players: [
+      { id: 1, name: 'Alice', hand: ['5H', '5H~2', '2S'], wait: 0, out: false },
+      { id: 2, name: 'Bob', hand: ['6H'], wait: 0, out: false },
+    ],
+    discard: ['4H'], suit: 'H',
+  });
+  assert.deepEqual(M.play(game, 1, ['5H']), { ok: true });
+  assert.deepEqual(game.players[0].hand, ['5H~2', '2S']);
+  assert.equal(M.rank('5H~2'), '5');
+  assert.equal(M.suit('5H~2'), 'H');
+});

@@ -122,3 +122,11 @@ Do not expose the service publicly without HTTPS, secure hosting, regular databa
 ### First administrator
 
 On a brand-new database, the first successful registration is atomically assigned administrator privileges. The database insert itself checks whether any user exists, so concurrent registrations cannot both become administrators. On an existing database with no administrator, startup safely promotes the oldest existing account. If the database is empty, the first successful registration becomes administrator. Existing administrator assignments are preserved.
+
+
+## Version 1.6.2 updates
+
+- Finished games retain a read-only final board, including the last discard and game log, so a bot's winning move remains visible.
+- Human tables support rematches: each participant votes, and a new game starts when every remaining table member agrees. Tournament matches are excluded; AI practice retains its Play again action.
+- The admin panel includes a player directory with rating, match stats, join date and coin balance. Admins can grant 1–10,000 coins with a reason; each grant is recorded in an audit table.
+- Shop and Customize are combined into one Customize & Shop screen, containing free local table settings and earnable cosmetic purchases/equipment.

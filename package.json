@@ -1,8 +1,8 @@
 {
   "name": "makao-online",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
-  "description": "Free multiplayer Polish Makao game with matchmaking, AI, progression, cosmetics, friends, tournaments and moderation",
+  "description": "Free multiplayer Polish Makao game with matchmaking, AI, progression, cosmetics, friends, tournaments, moderation and admin tools",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

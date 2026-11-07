@@ -100,3 +100,12 @@ test('Elo deltas are zero-sum and award the winner', () => {
   assert.ok(deltas[2] < 0);
   assert.equal(deltas.reduce((a, b) => a + b, 0), 0);
 });
+
+
+test('terminal game view exposes winner so clients can keep the final board visible', () => {
+  const st = M.newGame([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]);
+  st.winner = 0;
+  const view = M.view(st, 1);
+  assert.equal(view.winner, 0);
+  assert.equal(view.myTurn, false);
+});

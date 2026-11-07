@@ -138,7 +138,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, game: room.game, chat: room.chat,
+    members: room.members, game: room.game, lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
@@ -150,10 +150,10 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
     members: r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id) }; }),
-    chat: r.chat.slice(-40), result: r.result,
+    chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
   };
 }
 function stateFor(uid) {
@@ -162,12 +162,12 @@ function stateFor(uid) {
   return {
     t: 'state', me: userView(u),
     lobbies: [...rooms.values()].map((r) => ({
-      id: r.id, name: r.name, host: uname(r.host), count: r.members.length, max: r.max, playing: !!r.game,
+      id: r.id, name: r.name, host: uname(r.host), count: r.members.length, max: r.max, playing: !!r.game || !!r.result,
       ranked: !r.tournamentId && M.isRanked(r.rules),
     })),
     room: room ? roomView(room) : null,
     matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
-    game: room && room.game ? M.view(room.game, uid) : null,
+    game: room && (room.game || (room.result && room.lastGame)) ? M.view(room.game || room.lastGame, uid) : null,
   };
 }
 function pushAll() {
@@ -232,7 +232,7 @@ function restoreRooms() {
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
         members: saved.members, game: saved.game || null,
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
-        result: saved.result || null, timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
+        result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
         tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null,
         rules: M.sanitizeRules(saved.rules),
       };
@@ -287,7 +287,9 @@ function finishGame(room) {
     const advanced = Tournaments.completeMatch(db, room.tournamentId, room.tournamentMatchId, result.winnerId, playedAt);
     if (advanced.error) console.warn('Tournament advancement failed:', advanced.error);
   }
+  room.lastGame = structuredClone(st); // Keep the terminal board visible after the final move.
   room.result = result;
+  room.rematchVotes = [];
   room.game = null;
 }
 function afterAction(room) {
@@ -304,6 +306,7 @@ function leaveRoom(uid) {
   if (!room) return;
   if (room.game) M.forfeit(room.game, uid);
   room.members = room.members.filter((id) => id !== uid);
+  room.rematchVotes = (room.rematchVotes || []).filter((id) => id !== uid);
   userRoom.delete(uid);
   if (!room.members.length) {
     clearTimeout(room.timer);
@@ -344,7 +347,7 @@ function handleAct(user, m) {
         const ids = [otherId, uid];
         const members = ids.map(id => q.byId.get(id)).filter(Boolean);
         const r = { id, name: 'Quick Match', host: otherId, max: 2, members: ids,
-          game: null, chat: [], result: null, timer: null, aiGame: false, aiDifficulty: 'normal',
+          game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null, aiGame: false, aiDifficulty: 'normal',
           rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
         const list = members.map(u => ({ id: u.id, name: u.display_name || u.username }));
         for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
@@ -364,7 +367,7 @@ function handleAct(user, m) {
       for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       const r = { id, name: 'AI Practice', host: uid, max: list.length, members: [uid], game: M.newGame(list, { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }),
-        chat: [], result: null, timer: null, aiGame: true, aiDifficulty: difficulty,
+        chat: [], result: null, lastGame: null, rematchVotes: [], timer: null, aiGame: true, aiDifficulty: difficulty,
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
       rooms.set(id, r); userRoom.set(uid, id); persistRoom(r); armTimer(r); pushAll();
       return { ok: true };
@@ -377,8 +380,21 @@ function handleAct(user, m) {
       const list = [{ id: uid, name: human.display_name || human.username }];
       for (let i = 0; i < count; i++) list.push({ id: -(i + 1), name: ['Mako Bot', 'Card Shark', 'The Dealer'][i] });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-      room.game = M.newGame(list, room.rules); room.result = null; persistRoom(room); armTimer(room); pushAll();
+      room.game = M.newGame(list, room.rules); room.lastGame = null; room.rematchVotes = []; room.result = null; persistRoom(room); armTimer(room); pushAll();
       return { ok: true };
+    }
+    case 'rematch': {
+      if (!room || room.game || !room.result || room.aiGame || room.tournamentId) return { error: 'A player rematch is not available' };
+      if (room.members.length < 2) return { error: 'At least two players are required' };
+      if (!room.rematchVotes.includes(uid)) room.rematchVotes.push(uid);
+      const votes = room.rematchVotes.length;
+      if (votes >= room.members.length) {
+        const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
+        for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+        room.game = M.newGame(list, room.rules); room.lastGame = null; room.result = null; room.rematchVotes = [];
+        armTimer(room); persistRoom(room); pushAll(); return { ok: true, started: true };
+      }
+      persistRoom(room); pushAll(); return { ok: true, votes, required: room.members.length };
     }
     case 'createRoom': {
       if (room) return { error: 'You are already at a table' };
@@ -386,7 +402,7 @@ function handleAct(user, m) {
       rooms.set(id, {
         id, name: str(m.name, 30).trim() || user.username + "'s table",
         host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)),
-        members: [uid], game: null, chat: [], result: null, timer: null,
+        members: [uid], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }, aiGame: false, aiDifficulty: 'normal',
       });
       userRoom.set(uid, id);
@@ -397,11 +413,11 @@ function handleAct(user, m) {
       if (room) return { error: 'You are already at a table' };
       const r = rooms.get(str(m.id, 20));
       if (!r) return { error: 'That table no longer exists' };
-      if (r.game) return { error: 'That game already started' };
+      if (r.game || r.result) return { error: 'That table has already played; create a new table or request a rematch' };
       if (r.members.some(id => Social.isBlocked(db, uid, id))) return { error: 'You cannot join a table with a player you have blocked or who blocked you' };
       if (r.members.length >= r.max) return { error: 'That table is full' };
       r.members.push(uid); userRoom.set(uid, r.id);
-      r.result = null;
+      r.result = null; r.lastGame = null; r.rematchVotes = [];
       persistRoom(r);
       break;
     }
@@ -427,7 +443,7 @@ function handleAct(user, m) {
       const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       room.game = M.newGame(list, room.rules);
-      room.result = null;
+      room.lastGame = null; room.rematchVotes = []; room.result = null;
       armTimer(room);
       break;
     }
@@ -596,6 +612,19 @@ const server = http.createServer((req, res) => {
     const admin = userByToken(req.headers['x-token']);
     if (!admin) return send(res, 401, { error: 'Not signed in' });
     if (!admin.is_admin) return send(res, 403, { error: 'Administrator access required' });
+    if (req.method === 'GET' && url.pathname === '/api/admin/users') {
+      const users = db.prepare(`SELECT u.id,u.username,u.display_name,u.rating,u.games,u.wins,u.created,u.is_admin,COALESCE(w.coins,0) AS coins
+        FROM users u LEFT JOIN shop_wallets w ON w.user_id=u.id ORDER BY u.created ASC LIMIT 500`).all();
+      return send(res, 200, { users });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/coins') {
+      return readBody(req, (m) => {
+        if (!m) return send(res,400,{error:'Bad request'});
+        const result = Shop.grantCoins(db, Number(m.userId), Number(m.amount), admin.id, m.reason);
+        if (result.error) return send(res,400,result);
+        return send(res,200,result);
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/api/admin/reports') {
       return send(res, 200, Social.listReports(db, url.searchParams.get('status') || 'open'));
     }
@@ -693,7 +722,7 @@ const server = http.createServer((req, res) => {
       if (!invite) return send(res, 404, { error: 'Invitation expired or no longer available' });
       if (!Social.areFriends(db, user.id, invite.sender_id) || Social.isBlocked(db, user.id, invite.sender_id)) return send(res, 403, { error: 'You are no longer friends with the inviter' });
       const room = rooms.get(invite.room_id);
-      if (!room || room.game || room.members.length >= room.max || !room.members.includes(invite.sender_id)) {
+      if (!room || room.game || room.result || room.members.length >= room.max || !room.members.includes(invite.sender_id)) {
         return send(res, 400, { error: 'That table is no longer available' });
       }
       room.members.push(user.id); userRoom.set(user.id, room.id); room.result = null;

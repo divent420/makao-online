@@ -289,7 +289,7 @@ function view(st, pid) {
       id: p.id, name: p.name, count: p.hand.length, wait: p.wait, out: p.out,
       turn: i === st.turn && st.winner == null,
     })),
-    hand, myTurn,
+    hand, myTurn, winner: st.winner,
     legal: myTurn ? hand.filter((c) => legalFirst(st, c) && (!st.drew || c === st.drew)) : [],
     top: st.discard[st.discard.length - 1], suit: st.suit,
     pending: st.pending, demand: st.demand ? { rank: st.demand.rank } : null,

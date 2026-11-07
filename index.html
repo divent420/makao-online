@@ -173,6 +173,8 @@ let socialLoading = false;
 let socialError = '';
 let tournamentData = null;
 let adminReports = [];
+let adminUsers = [];
+let adminUsersLoading = false;
 let adminStatus = 'open';
 let adminLoading = false;
 async function loadProgression() {
@@ -344,9 +346,9 @@ function chatBox(room) {
 function topBar() {
   const me=S.me;
   return h('div', { class: 'bar' },
-    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' || activeScreen === 'social' || activeScreen === 'admin' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
+    activeScreen === 'profile' || activeScreen === 'shop' || activeScreen === 'social' || activeScreen === 'admin' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
-    activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🛍 Shop') : null,
+    activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🎨 Customize') : null,
     activeScreen !== 'social' ? h('button',{class:'alt',onclick:showSocial},'👥 Social') : null,
     S.me.isAdmin && activeScreen !== 'admin' ? h('button',{class:'alt',onclick:showAdmin},'🛡 Admin') : null,
     h('button', { class:'alt profile-chip', onclick:showOwnProfile }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
@@ -504,14 +506,14 @@ function lobbyScreen() {
       h('div', { class: 'panel' },
         h('h2', {}, 'Leaderboard'), tbl,
         h('div', { class: 'muted', style: 'margin-top:12px' }, 'Your record: ' + S.me.wins + ' wins / ' + S.me.games + ' games'),
-        h('button',{class:'alt',style:'margin-top:14px;width:100%',onclick:()=>{activeScreen='customize';render();}},'🎨 Customize your table'))),
+        h('button',{class:'alt',style:'margin-top:14px;width:100%',onclick:showShop},'🎨 Customize your table'))),
     h('details', { class: 'panel', style: 'margin-top:14px' }, h('summary', {}, 'How to play'), h('ul', { class: 'rules' }, RULES.map((r) => h('li', {}, r)))),nav));
 }
 
 function bottomNav(active) {
   return h('nav',{class:'bottom-nav'},
     h('button',{onclick:()=>{activeScreen='home';render();}},h('span',{},'♣'),h('span',{},'Lobby')),
-    h('button',{onclick:()=>{activeScreen='customize';render();}},h('span',{},'🎨'),h('span',{},'Table')),
+    h('button',{onclick:showShop},h('span',{},'🎨'),h('span',{},'Table')),
     h('button',{onclick:showShop},h('span',{},'🛍'),h('span',{},'Shop')),
     h('button',{onclick:showSocial},h('span',{},'👥'),h('span',{},'Social')),
     h('button',{onclick:showOwnProfile},h('span',{},'👤'),h('span',{},'Profile')));
@@ -527,7 +529,7 @@ function shopScreen() {
   }
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
   const categories=[['card_back','Card backs'],['table_theme','Table themes'],['avatar_frame','Avatar frames']];
-  const content=[wallet,h('div',{class:'muted',style:'margin-top:10px'},'All items are cosmetic and never change cards, rules, odds or ratings. Real-money checkout is not enabled; this shop currently uses earnable coins.')];
+  const content=[wallet,...customizePanels(),h('div',{class:'muted',style:'margin-top:10px'},'All items are cosmetic and never change cards, rules, odds or ratings. Real-money checkout is not enabled; this shop currently uses earnable coins.')];
   for (const [category,title] of categories) {
     const items=shopData.items.filter(i=>i.category===category);
     const grid=h('div',{class:'shop-grid'});
@@ -543,7 +545,7 @@ function shopScreen() {
     content.push(h('section',{class:'panel',style:'margin-top:14px'},h('h2',{},title),grid));
   }
   content.push(h('div',{class:'panel muted',style:'margin-top:14px'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server.'));
-  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Cosmetic shop'),...content,bottomNav('shop')));
+  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Customize & Shop'),...content,bottomNav('shop')));
 }
 
 function profileScreen() {
@@ -605,17 +607,18 @@ function profileScreen() {
   mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},viewing?'Player profile':'My profile'),...children,bottomNav('profile')));
 }
 
-function customizeScreen() {
+function customizePanels() {
   const options=(key,items)=>h('div',{class:'settings-grid'},items.map(([id,label,style])=>h('div',{class:'swatch'+(tableTheme[key]===id?' active':''),style:style||'',onclick:()=>{tableTheme[key]=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
-  mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Make it your table'),
-    h('div',{class:'panel'},h('h2',{},'Table felt'),options('felt',[
+  return [
+    h('div',{class:'panel'},h('h2',{},'Your free table settings'),h('h3',{},'Table felt'),options('felt',[
       ['emerald','🌿 Emerald','background:linear-gradient(135deg,#12634b,#073e31)'],['blue','🌊 Ocean','background:linear-gradient(135deg,#174d83,#102d50)'],['purple','🔮 Royal','background:linear-gradient(135deg,#553b79,#2b1e46)'],['red','♦ Burgundy','background:linear-gradient(135deg,#783c3e,#401e29)'],['midnight','🌑 Midnight','background:linear-gradient(135deg,#343b46,#151c28)']])),
-    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Card backs'),options('back',[
+    h('div',{class:'panel',style:'margin-top:14px'},h('h3',{},'Card backs'),options('back',[
       ['royal','🔷 Royal blue','background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)'],['ruby','♦ Ruby','background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)'],['forest','🌲 Forest','background:repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)'],['dark','⚫ Graphite','background:repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)']])),
-    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Card shape'),options('cards', [['classic','Classic'],['round','Extra rounded'],['sharp','Sharp corners']])),
-    h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Live preview'),h('div',{class:'table',style:'min-height:190px;justify-content:center;align-items:center'},h('div',{class:'row',style:'gap:10px'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'}))),h('button',{class:'alt',style:'width:100%;margin-top:14px',onclick:()=>{tableTheme={...THEME_DEFAULT};localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset appearance')),
-    bottomNav('table')));
+    h('div',{class:'panel',style:'margin-top:14px'},h('h3',{},'Card shape'),options('cards',[['classic','Classic'],['round','Extra rounded'],['sharp','Sharp corners']])),
+    h('div',{class:'panel',style:'margin-top:14px'},h('h3',{},'Live preview'),h('div',{class:'table',style:'min-height:150px;justify-content:center;align-items:center'},h('div',{class:'row',style:'gap:10px'},cardEl('AS'),cardEl('KH'),h('div',{class:'card back'}))),h('button',{class:'alt',style:'width:100%;margin-top:14px',onclick:()=>{tableTheme={...THEME_DEFAULT};localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free appearance'))
+  ];
 }
+function customizeScreen() { activeScreen='shop'; return shopScreen(); }
 
 function roomScreen() {
   const r = S.room;
@@ -680,15 +683,17 @@ function gameScreen() {
       h('div', { class: 'muted' }, p.out ? 'left' : p.count + ' cards' + (p.wait ? ' · waits ' + p.wait : '')), mini));
   });
 
+  const finished = g.winner != null;
   const pend = g.pending, dem = g.demand;
   const banner = h('div', { class: 'banner' });
   const canStack = g.rules.stackPenalties;
-  if (pend) banner.append(h('span', { class: 'bad' }, pend.type === 'draw'
+  if (finished) banner.append(h('span',{},'Game finished · final move shown above'));
+  else if (pend) banner.append(h('span', { class: 'bad' }, pend.type === 'draw'
     ? 'Draw ' + pend.n + ' cards' + (canStack ? ', or answer with a penalty card (2 / 3 / K♥ / K♠)' : '')
     : 'Wait ' + pend.n + (pend.n > 1 ? ' turns' : ' turn') + (canStack ? ', or answer with a 4' : '')));
   else if (dem) banner.append(h('span', {}, 'Jack demands ' + dem.rank + ' (or play a J)'));
 
-  const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
+  const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
   const center = h('div', { class: 'center' },
     h('div', { style: 'text-align:center' }, drawPile, h('div', { class: 'muted' }, g.deckCount + ' left')),
     h('div', { style: 'text-align:center' }, cardEl(g.top), h('div', {}, 'suit ', suitEl(g.suit))));
@@ -696,11 +701,12 @@ function gameScreen() {
   const hand = h('div', { class: 'hand' });
   g.hand.forEach((c) => hand.append(cardEl(c, {
     cls: (sel.includes(c) ? 'sel ' : '') + (g.myTurn ? (g.legal.includes(c) ? 'legal' : 'dim') : ''),
-    onclick: () => clickCard(c),
+    onclick: () => { if (!finished) clickCard(c); },
   })));
 
   const actions = h('div', { class: 'actions' });
-  if (choose) {
+  if (finished) actions.append(h('span',{class:'muted'},'Final board — no more moves'));
+  else if (choose) {
     if (choose.kind === 'demand') {
       actions.append('Demand a rank:', h('div', { class: 'pick' }, ['5', '6', '7', '8', '9', '10'].map((r) => h('button', { onclick: () => sendPlay(choose.cards, { demand: r }) }, r))));
     } else {
@@ -727,12 +733,16 @@ function gameScreen() {
     h('div', { class: 'table' }, opps, banner, center,
       h('div', { class: 'log' }, g.log.slice(-3).map((l) => h('div', {}, l))),
       timer, actions, hand),
-    h('div', { class: 'panel', style: 'margin-top:12px' }, chatBox(S.room))));
+    h('div', { class: 'panel', style: 'margin-top:12px' }, chatBox(S.room)),
+    S.room.result ? h('div',{class:'panel',style:'margin-top:12px;text-align:center'},h('h2',{},S.room.result.winnerId===S.me.id?'🎉 You won!':S.room.result.winner+' wins'),
+      S.room.result.ranked ? h('div',{class:'muted'},'Ranked results saved · ratings updated') : h('div',{class:'muted'},S.room.result.tournament?'Tournament match completed · ratings unchanged':'Casual game · ratings unchanged'),
+      S.room.aiGame ? h('button',{style:'margin-top:12px',onclick:()=>act({t:'rematchAI'})},'🤖 Play again') : (!S.room.tournament ? h('div',{style:'margin-top:12px'},h('button',{disabled:(S.room.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const r=await act({t:'rematch'});if(r.ok)toast(r.started?'Rematch started':'Rematch vote recorded ('+r.votes+'/'+r.required+')');}},(S.room.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch vs players'),h('div',{class:'muted',style:'margin-top:8px'},(S.room.rematchVotes||[]).length+' / '+S.room.members.length+' players want a rematch')):null),
+      h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null));
   tick();
 }
 function tick() {
   const t = $('timer');
-  if (!t || !S || !S.game) return;
+  if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }
   const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
   t.textContent = S.game.myTurn ? 'Your turn · ' + s + 's' : s + 's';
   t.style.color = S.game.myTurn && s <= 10 ? '#ff8a80' : '';
@@ -747,7 +757,14 @@ async function loadAdminReports() {
   if (r.error) toast(r.error); else adminReports = r.reports || [];
   if (activeScreen === 'admin') render();
 }
-function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminReports(); render(); }
+async function loadAdminUsers() {
+  if (!S?.me?.isAdmin) return;
+  adminUsersLoading=true; render();
+  const r=await api('/api/admin/users'); adminUsersLoading=false;
+  if(r.error) toast(r.error); else adminUsers=r.users||[];
+  if(activeScreen==='admin') render();
+}
+function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminReports(); loadAdminUsers(); render(); }
 function adminScreen() {
   const filters = h('div',{class:'row',style:'margin-bottom:14px'},['open','reviewing','resolved','dismissed','all'].map(status=>h('button',{class:adminStatus===status?'':'alt',onclick:()=>{adminStatus=status;loadAdminReports();}},status[0].toUpperCase()+status.slice(1))));
   const panel = h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
@@ -762,15 +779,21 @@ function adminScreen() {
     }
     panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'#'+report.id+' · '+report.reason.replaceAll('_',' ')),h('span',{class:'muted'},new Date(report.created_at).toLocaleString())),h('div',{},'Reported: @'+report.reported_username+' · By: @'+report.reporter_username),report.details?h('p',{},report.details):null,h('div',{class:'muted'},'Status: '+report.status+(report.moderator_username?' · Reviewed by @'+report.moderator_username:'')),report.resolution?h('div',{class:'muted'},'Note: '+report.resolution):null,actions));
   });
-  return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Moderation'),h('p',{class:'muted'},'Review player reports. Actions are recorded with your moderator account.'),panel,bottomNav('admin')));
+  const usersPanel=h('div',{class:'panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Players'),h('button',{class:'alt',onclick:loadAdminUsers},'↻ Refresh')));
+  if(adminUsersLoading) usersPanel.append(h('p',{class:'muted'},'Loading players…'));
+  else if(!adminUsers.length) usersPanel.append(h('p',{class:'muted'},'No players found.'));
+  adminUsers.forEach(player=>{
+    const grant=h('button',{class:'alt',onclick:async()=>{const raw=prompt('How many coins to grant? (1–10,000)','100');if(raw===null)return;const amount=Number(raw);if(!Number.isInteger(amount)||amount<1||amount>10000)return toast('Enter a whole number from 1 to 10,000');const reason=prompt('Reason for coin grant (optional):','Admin reward')||'';const r=await api('/api/admin/coins',{userId:player.id,amount,reason});if(r.error)return toast(r.error);toast('Granted '+amount+' coins to @'+player.username);loadAdminUsers();if(player.id===S.me.id)loadShop();}},'＋ Give coins');
+    usersPanel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},(player.is_admin?'🛡 ':'')+'@'+player.username),h('strong',{},'🪙 '+player.coins)),h('div',{class:'muted'},'Rating '+player.rating+' · '+player.games+' games · '+player.wins+' wins · Joined '+new Date(player.created).toLocaleDateString()),player.id===S.me.id?h('span',{class:'muted'},'Your account'):grant));
+  });
+  return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin panel'),h('p',{class:'muted'},'Manage player reports and player coin balances.'),usersPanel,panel,bottomNav('admin')));
 }
 
 function render() {
   if (!token) return authScreen();
   if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
   if (activeScreen === 'profile') return profileScreen();
-  if (activeScreen === 'customize') return customizeScreen();
-  if (activeScreen === 'shop') return shopScreen();
+  if (activeScreen === 'customize' || activeScreen === 'shop') return shopScreen();
   if (activeScreen === 'social') return socialScreen();
   if (activeScreen === 'admin') return adminScreen();
   if (S.game) return gameScreen();

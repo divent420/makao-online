@@ -46,3 +46,14 @@ test('unknown cosmetics cannot be purchased or equipped', () => {
   assert.equal(Shop.equip(db,1,'made_up_item').error,'Cosmetic not found');
   db.close();
 });
+
+
+test('administrator coin grants validate amounts and write an audit record', () => {
+  const db = setup();
+  db.prepare('INSERT INTO users(id,username) VALUES(2,?)').run('admin');
+  assert.equal(Shop.grantCoins(db,1,100,2,'welcome gift',5000).coins,100);
+  assert.equal(db.prepare('SELECT amount,reason,admin_id FROM admin_coin_adjustments WHERE user_id=1').get().amount,100);
+  assert.equal(Shop.grantCoins(db,1,0,2).error,'Coin amount must be between 1 and 10,000');
+  assert.equal(Shop.grantCoins(db,999,50,2).error,'Player not found');
+  db.close();
+});

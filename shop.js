@@ -28,6 +28,10 @@ function initialize(db) {
       cosmetic_id TEXT NOT NULL REFERENCES cosmetics(id), purchased_at INTEGER NOT NULL,
       PRIMARY KEY(user_id, cosmetic_id)
     );
+    CREATE TABLE IF NOT EXISTS admin_coin_adjustments(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL, reason TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS user_equipped_cosmetics(
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       category TEXT NOT NULL, cosmetic_id TEXT NOT NULL REFERENCES cosmetics(id),
@@ -48,6 +52,21 @@ function awardMatchCoins(db, userId, won, aiGame, now = Date.now()) {
   const coins = (aiGame ? 5 : 10) + (won ? (aiGame ? 3 : 5) : 0);
   db.prepare('UPDATE shop_wallets SET coins=coins+?,updated=? WHERE user_id=?').run(coins, now, userId);
   return coins;
+}
+
+function grantCoins(db, userId, amount, adminId, reason = '', now = Date.now()) {
+  if (!Number.isSafeInteger(userId) || userId <= 0) return { error: 'Invalid player' };
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10000) return { error: 'Coin amount must be between 1 and 10,000' };
+  if (!db.prepare('SELECT 1 AS ok FROM users WHERE id=?').get(userId)) return { error: 'Player not found' };
+  ensureWallet(db, userId, now);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('UPDATE shop_wallets SET coins=coins+?,updated=? WHERE user_id=?').run(amount, now, userId);
+    db.prepare('INSERT INTO admin_coin_adjustments(admin_id,user_id,amount,reason,created_at) VALUES(?,?,?,?,?)')
+      .run(adminId, userId, amount, String(reason || '').slice(0,200), now);
+    db.exec('COMMIT');
+  } catch (error) { db.exec('ROLLBACK'); return { error: 'Could not grant coins' }; }
+  return { ok: true, coins: getShop(db, userId, now).coins };
 }
 
 function getShop(db, userId, now = Date.now()) {
@@ -97,4 +116,4 @@ function equip(db, userId, cosmeticId, now = Date.now()) {
   return { ok: true, shop: getShop(db,userId,now) };
 }
 
-module.exports = { CATALOG, initialize, awardMatchCoins, getShop, buy, equip };
+module.exports = { CATALOG, initialize, awardMatchCoins, grantCoins, getShop, buy, equip };

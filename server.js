@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS users(
   created INTEGER NOT NULL,
   display_name TEXT NOT NULL DEFAULT '',
   avatar TEXT NOT NULL DEFAULT '🂡',
-  bio TEXT NOT NULL DEFAULT 'Ready to play Makao');
+  bio TEXT NOT NULL DEFAULT 'Ready to play Makao',
+  is_admin INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS sessions(
   token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS games(
@@ -44,12 +45,13 @@ CREATE TABLE IF NOT EXISTS games(
 CREATE TABLE IF NOT EXISTS active_rooms(
   room_id TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated INTEGER NOT NULL);
 `);
+if (process.env.ADMIN_USERNAME) db.prepare('UPDATE users SET is_admin=1 WHERE username=? COLLATE NOCASE').run(process.env.ADMIN_USERNAME.trim());
 Progression.initialize(db);
 Shop.initialize(db);
 Social.initialize(db);
 Tournaments.initialize(db);
 // Safe migrations for databases created by earlier versions.
-for (const [name, def] of [['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
+for (const [name, def] of [['is_admin', 'INTEGER NOT NULL DEFAULT 0'], ['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
   if (!cols.includes(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${def}`);
 }
@@ -73,7 +75,7 @@ const q = {
 
 // ---------- accounts ----------
 const hashPw = (pw, salt) => crypto.scryptSync(pw, salt, 64).toString('hex');
-const userView = (u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', bio: u.bio || '', rating: u.rating, games: u.games, wins: u.wins });
+const userView = (u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', bio: u.bio || '', rating: u.rating, games: u.games, wins: u.wins, isAdmin: !!u.is_admin });
 
 function register(username, password) {
   username = String(username || '').trim();
@@ -125,6 +127,7 @@ const userRoom = new Map();     // userId -> roomId
 const online = new Map();       // userId -> { res }
 const dcTimers = new Map();     // userId -> timeout
 const matchmakingQueue = new Map(); // userId -> queuedAt
+const actionWindows = new Map(); // userId -> { startedAt, count }
 const uname = (id) => { const u = q.byId.get(id); return u ? u.username : '?'; };
 const str = (s, n) => String(s == null ? '' : s).slice(0, n);
 
@@ -477,6 +480,10 @@ const server = http.createServer((req, res) => {
     });
   }
 
+  if (req.method === 'GET' && url.pathname === '/health') {
+    return send(res, 200, { ok: true, service: 'makao-online', uptimeSeconds: Math.floor(process.uptime()), timestamp: Date.now() });
+  }
+
   if (req.method === 'GET' && url.pathname === '/') {
     fs.readFile(path.join(__dirname, 'index.html'), (err, buf) => {
       if (err) { res.writeHead(500); return res.end('index.html missing'); }
@@ -582,6 +589,23 @@ const server = http.createServer((req, res) => {
       persistRoom(room); armTimer(room); pushAll();
       return send(res,200,{ok:true,roomId});
     });
+  }
+
+  if (url.pathname.startsWith('/api/admin/')) {
+    const admin = userByToken(req.headers['x-token']);
+    if (!admin) return send(res, 401, { error: 'Not signed in' });
+    if (!admin.is_admin) return send(res, 403, { error: 'Administrator access required' });
+    if (req.method === 'GET' && url.pathname === '/api/admin/reports') {
+      return send(res, 200, Social.listReports(db, url.searchParams.get('status') || 'open'));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/reports/update') {
+      return readBody(req, (m) => {
+        if (!m) return send(res, 400, { error: 'Bad request' });
+        const result = Social.updateReport(db, m.reportId, admin.id, m.status, m.resolution);
+        return result.error ? send(res, 400, result) : send(res, 200, result);
+      });
+    }
+    return send(res, 404, { error: 'Admin endpoint not found' });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/social') {
@@ -743,6 +767,15 @@ const server = http.createServer((req, res) => {
     if (!user) return send(res, 401, { error: 'Not signed in' });
     return readBody(req, (m) => {
       if (!m) return send(res, 400, { error: 'Bad request' });
+      // Protect the authoritative game engine from scripted request floods while
+      // allowing normal rapid card selection and ordinary play.
+      const now = Date.now();
+      const window = actionWindows.get(user.id) || { startedAt: now, count: 0 };
+      if (now - window.startedAt >= 2000) { window.startedAt = now; window.count = 0; }
+      window.count++;
+      actionWindows.set(user.id, window);
+      if (window.count > 24) return send(res, 429, { error: 'Too many actions. Please slow down.' });
+      if (actionWindows.size > 5000) for (const [id, w] of actionWindows) if (now - w.startedAt > 60000) actionWindows.delete(id);
       send(res, 200, handleAct(q.byId.get(user.id), m));
     });
   }

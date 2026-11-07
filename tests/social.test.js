@@ -58,3 +58,18 @@ test('reports accept only valid targets and reasons',()=>{
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM player_reports').get().n,1);
   db.close();
 });
+test('reports are rate limited and moderation queue can be updated',()=>{
+  const db=setup();
+  assert.equal(Social.report(db,1,2,'harassment','bad chat',1000).ok,true);
+  assert.equal(Social.report(db,1,2,'harassment','again',1001).ok,true);
+  assert.equal(Social.listReports(db,'open').reports.length,2);
+  const id=Social.listReports(db,'open').reports[0].id;
+  assert.equal(Social.updateReport(db,id,3,'reviewing','checking',2000).ok,true);
+  assert.equal(Social.listReports(db,'reviewing').reports[0].moderator_username,'cara');
+  assert.equal(Social.updateReport(db,id,3,'resolved','action taken',3000).ok,true);
+  assert.equal(Social.listReports(db,'resolved').reports.length,1);
+  assert.match(Social.updateReport(db,id,3,'ban').error,/status/i);
+  for(let i=0;i<3;i++) Social.report(db,1,2,'spam','',4000+i);
+  assert.match(Social.report(db,1,2,'spam','',4004).error,/too many/i);
+  db.close();
+});

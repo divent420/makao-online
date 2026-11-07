@@ -42,6 +42,11 @@ function initialize(db) {
       CHECK(reporter_id <> reported_id)
     );
   `);
+  const reportCols=db.prepare('PRAGMA table_info(player_reports)').all().map(c=>c.name);
+  if (!reportCols.includes('status')) db.exec("ALTER TABLE player_reports ADD COLUMN status TEXT NOT NULL DEFAULT 'open'");
+  if (!reportCols.includes('reviewed_by')) db.exec('ALTER TABLE player_reports ADD COLUMN reviewed_by INTEGER REFERENCES users(id)');
+  if (!reportCols.includes('reviewed_at')) db.exec('ALTER TABLE player_reports ADD COLUMN reviewed_at INTEGER');
+  if (!reportCols.includes('resolution')) db.exec("ALTER TABLE player_reports ADD COLUMN resolution TEXT NOT NULL DEFAULT ''");
 }
 
 function pair(a,b) { return [Math.min(Number(a),Number(b)),Math.max(Number(a),Number(b))]; }
@@ -104,8 +109,25 @@ function report(db,reporterId,reportedId,reason,details='',now=Date.now()) {
   const allowed=['harassment','cheating','offensive_name','spam','other'];
   if (!Number.isSafeInteger(reportedId)||reportedId<1||reportedId===reporterId||!db.prepare('SELECT 1 FROM users WHERE id=?').get(reportedId)) return {error:'Invalid player'};
   if (!allowed.includes(reason)) return {error:'Choose a valid report reason'};
+  const recent=db.prepare('SELECT COUNT(*) AS n FROM player_reports WHERE reporter_id=? AND created_at>?').get(reporterId,now-10*60*1000).n;
+  if (recent>=5) return {error:'You have submitted too many reports. Try again later'};
   db.prepare('INSERT INTO player_reports(reporter_id,reported_id,reason,details,created_at) VALUES(?,?,?,?,?)').run(reporterId,reportedId,reason,details,now);
   return {ok:true};
+}
+function listReports(db,status='open',limit=100) {
+  const allowed=['open','reviewing','resolved','dismissed','all'];
+  if(!allowed.includes(status)) status='open';
+  const rows=status==='all'
+    ? db.prepare(`SELECT r.*,a.username AS reporter_username,b.username AS reported_username,m.username AS moderator_username FROM player_reports r JOIN users a ON a.id=r.reporter_id JOIN users b ON b.id=r.reported_id LEFT JOIN users m ON m.id=r.reviewed_by ORDER BY r.created_at DESC LIMIT ?`).all(Math.min(200,Math.max(1,limit)))
+    : db.prepare(`SELECT r.*,a.username AS reporter_username,b.username AS reported_username,m.username AS moderator_username FROM player_reports r JOIN users a ON a.id=r.reporter_id JOIN users b ON b.id=r.reported_id LEFT JOIN users m ON m.id=r.reviewed_by WHERE r.status=? ORDER BY r.created_at DESC LIMIT ?`).all(status,Math.min(200,Math.max(1,limit)));
+  return {reports:rows};
+}
+function updateReport(db,reportId,moderatorId,status,resolution='',now=Date.now()) {
+  reportId=Number(reportId); resolution=String(resolution||'').trim().slice(0,500);
+  if(!Number.isSafeInteger(reportId)||reportId<1) return {error:'Invalid report'};
+  if(!['open','reviewing','resolved','dismissed'].includes(status)) return {error:'Invalid report status'};
+  const result=db.prepare('UPDATE player_reports SET status=?,reviewed_by=?,reviewed_at=?,resolution=? WHERE id=?').run(status,moderatorId,now,resolution,reportId);
+  return Number(result.changes) ? {ok:true} : {error:'Report not found'};
 }
 function list(db,userId,isOnline=()=>false,now=Date.now()) {
   const friends=db.prepare(`SELECT u.id,u.username,u.display_name,u.avatar,u.rating FROM friendships f JOIN users u ON u.id=CASE WHEN f.user_low=? THEN f.user_high ELSE f.user_low END WHERE f.user_low=? OR f.user_high=? ORDER BY u.username`).all(userId,userId,userId)
@@ -132,4 +154,4 @@ function getInvite(db,inviteId,userId,now=Date.now()) {
   return db.prepare('SELECT * FROM room_invites WHERE id=? AND recipient_id=? AND accepted_at IS NULL AND expires_at>?').get(String(inviteId||''),userId,now)||null;
 }
 function markInviteAccepted(db,inviteId,now=Date.now()) { db.prepare('UPDATE room_invites SET accepted_at=? WHERE id=?').run(now,String(inviteId)); }
-module.exports={initialize,request,respond,removeFriend,block,report,list,areFriends,isBlocked,createInvite,getInvite,markInviteAccepted};
+module.exports={initialize,request,respond,removeFriend,block,report,list,listReports,updateReport,areFriends,isBlocked,createInvite,getInvite,markInviteAccepted};

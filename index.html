@@ -172,6 +172,9 @@ let socialData = null;
 let socialLoading = false;
 let socialError = '';
 let tournamentData = null;
+let adminReports = [];
+let adminStatus = 'open';
+let adminLoading = false;
 async function loadProgression() {
   progressionLoading = true; progressionError = '';
   try {
@@ -341,10 +344,11 @@ function chatBox(room) {
 function topBar() {
   const me=S.me;
   return h('div', { class: 'bar' },
-    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' || activeScreen === 'social' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
+    activeScreen === 'profile' || activeScreen === 'customize' || activeScreen === 'shop' || activeScreen === 'social' || activeScreen === 'admin' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
     activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🛍 Shop') : null,
     activeScreen !== 'social' ? h('button',{class:'alt',onclick:showSocial},'👥 Social') : null,
+    S.me.isAdmin && activeScreen !== 'admin' ? h('button',{class:'alt',onclick:showAdmin},'🛡 Admin') : null,
     h('button', { class:'alt profile-chip', onclick:showOwnProfile }, h('span',{class:'avatar'},me.avatar||'🂡'), h('span',{},me.displayName||me.username)),
     h('button', { class: 'alt', onclick: logout, title:'Log out' }, '↗'));
 }
@@ -735,6 +739,32 @@ function tick() {
 }
 setInterval(tick, 500);
 
+async function loadAdminReports() {
+  if (!S?.me?.isAdmin) return;
+  adminLoading = true; render();
+  const r = await api('/api/admin/reports?status=' + encodeURIComponent(adminStatus));
+  adminLoading = false;
+  if (r.error) toast(r.error); else adminReports = r.reports || [];
+  if (activeScreen === 'admin') render();
+}
+function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminReports(); render(); }
+function adminScreen() {
+  const filters = h('div',{class:'row',style:'margin-bottom:14px'},['open','reviewing','resolved','dismissed','all'].map(status=>h('button',{class:adminStatus===status?'':'alt',onclick:()=>{adminStatus=status;loadAdminReports();}},status[0].toUpperCase()+status.slice(1))));
+  const panel = h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
+  if (adminLoading) panel.append(h('p',{class:'muted'},'Loading reports…'));
+  else if (!adminReports.length) panel.append(h('p',{class:'muted'},'No reports in this queue.'));
+  adminReports.forEach(report=>{
+    const actions=h('div',{class:'row',style:'margin-top:8px'});
+    if (report.status==='open') actions.append(h('button',{class:'alt',onclick:async()=>{const r=await api('/api/admin/reports/update',{reportId:report.id,status:'reviewing'});if(r.error)return toast(r.error);loadAdminReports();}},'Mark reviewing'));
+    if (!['resolved','dismissed'].includes(report.status)) {
+      actions.append(h('button',{onclick:async()=>{const note=prompt('Moderator note (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'resolved',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Resolve'));
+      actions.append(h('button',{class:'warn',onclick:async()=>{const note=prompt('Reason for dismissal (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'dismissed',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Dismiss'));
+    }
+    panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'#'+report.id+' · '+report.reason.replaceAll('_',' ')),h('span',{class:'muted'},new Date(report.created_at).toLocaleString())),h('div',{},'Reported: @'+report.reported_username+' · By: @'+report.reporter_username),report.details?h('p',{},report.details):null,h('div',{class:'muted'},'Status: '+report.status+(report.moderator_username?' · Reviewed by @'+report.moderator_username:'')),report.resolution?h('div',{class:'muted'},'Note: '+report.resolution):null,actions));
+  });
+  return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Moderation'),h('p',{class:'muted'},'Review player reports. Actions are recorded with your moderator account.'),panel,bottomNav('admin')));
+}
+
 function render() {
   if (!token) return authScreen();
   if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
@@ -742,6 +772,7 @@ function render() {
   if (activeScreen === 'customize') return customizeScreen();
   if (activeScreen === 'shop') return shopScreen();
   if (activeScreen === 'social') return socialScreen();
+  if (activeScreen === 'admin') return adminScreen();
   if (S.game) return gameScreen();
   if (S.room) return roomScreen();
   lobbyScreen();

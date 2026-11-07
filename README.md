@@ -105,3 +105,28 @@ The suite covers core game rules, AI decisions, XP thresholds, achievement unloc
 - Match winners advance to the final; the final winner is recorded as the tournament champion.
 - Tournament games award normal casual progression and coins but do not change Elo.
 - Brackets, match status and active tournament match metadata are stored in SQLite and active matches use the existing room snapshot recovery.
+
+
+## Moderation and operations (v1.6.0)
+
+- Set `ADMIN_USERNAME` to an existing account's username when starting the server to grant that account administrator access. Register the account first, stop the server, then restart with the environment variable set. Admin access is tied to normal authenticated sessions; there is no shared admin password or public admin registration route.
+- Administrators see **Admin** in the top bar and can review reports, mark them as reviewing, resolve or dismiss them, and attach a moderator note. The report queue is available only to authenticated administrator accounts.
+- Player reports are limited to five per reporter in a rolling ten-minute window.
+- `/health` returns a minimal service health response and process uptime for external monitoring.
+- Gameplay actions are rate-limited to 24 requests per player per two-second window. The server remains authoritative for turn order, card ownership and legal moves.
+- Existing databases are migrated additively: admin and report-review fields are added without deleting player or game data.
+
+Example (Linux/macOS):
+
+```sh
+ADMIN_USERNAME=youradminusername npm start
+```
+
+PowerShell:
+
+```powershell
+$env:ADMIN_USERNAME = "youradminusername"
+npm start
+```
+
+Do not expose the service publicly without HTTPS, secure hosting, regular database backups and a trusted administrator account. The health endpoint is intentionally minimal; this phase does not yet include external alerting, automated account suspensions, or a full anti-cheat analytics system.

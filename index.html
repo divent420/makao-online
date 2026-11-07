@@ -345,6 +345,18 @@ table td,table th{border-color:#ffffff18}
 .admin-players-panel { margin-bottom:22px !important; }
 .admin-reports-panel { margin-top:22px !important; }
 .admin-players-panel,.admin-reports-panel { background:linear-gradient(145deg,#172f25,#11251d) !important; border-color:#315746 !important; }
+
+/* Stable timer slot: countdown text must never reflow the table. */
+.game-timer{display:flex;align-items:center;justify-content:center;width:190px;min-width:190px;height:36px;min-height:36px;box-sizing:border-box;flex:0 0 190px;margin:0 auto;padding:0 12px;border:1px solid #b99a4c66;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
+.game-table-felt{align-items:stretch;}
+.game-log{min-height:34px;max-height:34px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
+.rule-setting,.rule-settings,.rule-settings label{background:#172f25!important;border-color:#315746!important;color:#e8eee5!important;}
+.rule-settings select,.rule-setting select{background:#10271e!important;border:1px solid #41664f!important;color:#f4f2e9!important;color-scheme:dark;}
+.xp-track{background:#0b2119!important;border-color:#315744!important;}
+.xp-fill{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
+.challenge-track{background:#0b2119!important;border-color:#315744!important;}
+.challenge-track>div{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
+.shop-preview-section .shop-preview{margin-top:8px;}
 </style>
 </head>
 <body>
@@ -822,7 +834,8 @@ function shopScreen() {
     mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel'},shopError,h('button',{class:'alt',onclick:loadShop},'Retry')),bottomNav('shop'))); return;
   }
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
-  const content=[wallet,h('div',{class:'muted shop-note'},'Choose any appearance option below. Free styles and coin cosmetics live together in one place.')];
+  const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
+  const content=[wallet,h('section',{class:'panel shop-section shop-preview-section'},h('h2',{},'Table preview'),preview),h('div',{class:'muted shop-note'},'Choose any appearance option below. Free styles and coin cosmetics live together in one place.')];
   const cardBacks=[
     {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
     {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
@@ -869,8 +882,7 @@ function shopScreen() {
   ];
   const shapeGrid=h('div',{class:'shop-grid shape-grid'});
   shapes.forEach(([id,label])=>shapeGrid.append(h('button',{class:'alt shape-option'+(tableTheme.cards===id?' selected':''),disabled:tableTheme.cards===id,onclick:()=>{tableTheme.cards=id;localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},label)));
-  const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
-  content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape & preview'),shapeGrid,preview,
+  content.push(h('section',{class:'panel shop-section'},h('h2',{},'Card shape'),shapeGrid,
     h('button',{class:'alt',onclick:()=>{tableTheme={...THEME_DEFAULT};freeAppearance={};saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},'Reset free styles')));
   content.push(h('div',{class:'panel muted shop-earn-note'},'You earn coins automatically after matches: 10 for a completed human match, plus 5 for a win. AI matches award half. Purchases and equipment are checked on the server. All cosmetics are gameplay-neutral.'));
   mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'Appearance'),...content,bottomNav('shop')));
@@ -1054,7 +1066,7 @@ function gameScreen() {
     actions.append(h('span', { class: 'muted' }, cur ? cur.name + "'s turn" : ''));
   }
 
-  const timer = h('div', { class: 'game-timer', id: 'timer' });
+  const timer = h('div', { class: 'game-timer', id: 'timer', 'aria-live':'off' });
   const ownPlayer=h('div',{class:'own-player-bar'},
     h('span',{class:'avatar own-game-avatar'},S.me.avatar||'🂡'),
     h('div',{class:'own-player-copy'},h('strong',{},S.me.displayName||S.me.username),h('small',{},g.myTurn?'Your turn':g.hand.length+' cards in hand')),

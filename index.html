@@ -331,6 +331,20 @@ table td,table th{border-color:#ffffff18}
 @media(max-width:420px){.game-player-card{min-width:calc(50% - 4px)}.game-center-piles{gap:18px}.game-hand .card{width:clamp(34px,9.7vw,43px);height:clamp(52px,14.5vw,66px)}}
 @media(prefers-reduced-motion:reduce){.game-hand .card{transition:none}}
 
+
+/* Emerald polish: keep every secondary screen on the same palette as the lobby. */
+.shop-section,.shop-earn-note,.shop-note { background:linear-gradient(145deg,#172f25,#10251e) !important; border-color:#315746 !important; color:#f4f2e9; }
+.shop-item { background:linear-gradient(145deg,#1d382c,#14291f) !important; border-color:#355b47 !important; color:#f4f2e9; }
+.shop-item-icon { background:linear-gradient(135deg,#285d45,#173c2e) !important; border:1px solid #47765b; }
+.shop-item p,.shop-note,.shop-earn-note { color:#b5c8bb !important; }
+.shop-wallet { background:linear-gradient(110deg,#28563f,#173a2b) !important; border:1px solid #b99a4c !important; color:#fff4d1; }
+.shop-wallet .muted { color:#c6d8ca !important; }
+.challenge-track { background:#0b2119 !important; border:1px solid #315744; }
+.challenge-track>div { background:linear-gradient(90deg,#4ba879,#d4bd65) !important; }
+.avatar.big { background:linear-gradient(145deg,#286247,#123b2c) !important; border:2px solid #c6a95b; color:#fff5d6; }
+.admin-players-panel { margin-bottom:22px !important; }
+.admin-reports-panel { margin-top:22px !important; }
+.admin-players-panel,.admin-reports-panel { background:linear-gradient(145deg,#172f25,#11251d) !important; border-color:#315746 !important; }
 </style>
 </head>
 <body>
@@ -442,7 +456,7 @@ async function loadShop() {
   finally { shopLoading = false; applyShopEffects(); }
   if (activeScreen === 'shop') render();
 }
-function showShop() { activeScreen = 'shop'; if (!shopData && !shopLoading) loadShop(); render(); }
+function showShop() { activeScreen = 'shop'; if (!shopLoading) loadShop(); render(); }
 async function loadSocial() {
   socialLoading = true; socialError = '';
   try {
@@ -772,8 +786,8 @@ function lobbyScreen() {
     h('div',{class:'option-copy'},h('strong',{},'Play vs AI'),h('p',{},'Practice with 1–3 opponents')),
     h('div',{class:'ai-controls'},h('select',{id:'aiCount','aria-label':'AI opponents'},[1,2,3].map(n=>h('option',{value:n,selected:n===2},n+' AI'))),h('select',{id:'aiDifficulty','aria-label':'AI difficulty'},['easy','normal','hard'].map(d=>h('option',{value:d,selected:d==='normal'},d[0].toUpperCase()+d.slice(1))))),
     h('button',{class:'option-play',onclick:()=>act({t:'playAI',count:Number($('aiCount').value),difficulty:$('aiDifficulty').value})},'Play →'));
-  const privatePanel=h('button',{class:'play-option-card friends-option',onclick:showSocial},
-    h('div',{class:'option-icon'},'👥'),h('div',{class:'option-copy'},h('strong',{},'Play with friends'),h('p',{},'Invite friends to your own table')),h('span',{class:'option-arrow'},'→'));
+  const privatePanel=h('button',{class:'play-option-card friends-option',onclick:async()=>{const r=await act({t:'createRoom',name:(S.me.displayName||S.me.username)+"'s table",max:4});if(r.error)return;activeScreen='social';await loadSocial();render();}},
+    h('div',{class:'option-icon'},'👥'),h('div',{class:'option-copy'},h('strong',{},'Play with friends'),h('p',{},'Create a private lobby, then invite your friends')),h('span',{class:'option-arrow'},'→'));
   const openTables=h('section',{class:'home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Open tables'),h('p',{},S.lobbies.length+' tables looking for players')),h('button',{class:'text-action',onclick:()=>{const el=document.getElementById('create-table');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}},'+ Create')),
     list,
@@ -890,7 +904,7 @@ function profileScreen() {
         h('div',{class:'settings-grid',style:'margin-top:14px'},[['Completed',p.totalGames],['Progression wins',p.totalWins],['Current streak',p.currentStreak],['Best streak',p.bestStreak]].map(([k,v])=>h('div',{style:'text-align:center;padding:8px;background:#ffffff08;border-radius:12px'},h('div',{style:'font-size:21px;font-weight:800'},v),h('div',{class:'muted'},k)))));
       const challenges = h('div',{class:'panel',style:'margin-top:14px'},h('h2',{},'Daily challenges'));
       data.dailyChallenges.forEach(c=>{
-        const pctDone = Math.round(c.progress/c.goal*100);
+        const pctDone = Math.max(0,Math.min(100,Math.round(c.progress/c.goal*100)));
         challenges.append(h('div',{class:'challenge'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},c.title),h('span',{class:c.completed?'pos':'muted'},c.completed?'✓ Complete':'+'+c.reward+' XP')),h('div',{class:'muted'},c.description+' · '+c.progress+'/'+c.goal),h('div',{class:'challenge-track'},h('div',{style:'width:'+pctDone+'%'}))));
       });
       const achievements = h('div',{class:'panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Achievements'),h('span',{class:'muted'},data.achievements.filter(a=>a.unlockedAt).length+'/'+data.achievements.length+' unlocked')));
@@ -1090,7 +1104,7 @@ async function loadAdminUsers() {
 function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminReports(); loadAdminUsers(); render(); }
 function adminScreen() {
   const filters = h('div',{class:'row',style:'margin-bottom:14px'},['open','reviewing','resolved','dismissed','all'].map(status=>h('button',{class:adminStatus===status?'':'alt',onclick:()=>{adminStatus=status;loadAdminReports();}},status[0].toUpperCase()+status.slice(1))));
-  const panel = h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
+  const panel = h('div',{class:'panel admin-reports-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
   if (adminLoading) panel.append(h('p',{class:'muted'},'Loading reports…'));
   else if (!adminReports.length) panel.append(h('p',{class:'muted'},'No reports in this queue.'));
   adminReports.forEach(report=>{
@@ -1102,12 +1116,12 @@ function adminScreen() {
     }
     panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'#'+report.id+' · '+report.reason.replaceAll('_',' ')),h('span',{class:'muted'},new Date(report.created_at).toLocaleString())),h('div',{},'Reported: @'+report.reported_username+' · By: @'+report.reporter_username),report.details?h('p',{},report.details):null,h('div',{class:'muted'},'Status: '+report.status+(report.moderator_username?' · Reviewed by @'+report.moderator_username:'')),report.resolution?h('div',{class:'muted'},'Note: '+report.resolution):null,actions));
   });
-  const usersPanel=h('div',{class:'panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Players'),h('button',{class:'alt',onclick:loadAdminUsers},'↻ Refresh')));
+  const usersPanel=h('div',{class:'panel admin-players-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Players'),h('button',{class:'alt',onclick:loadAdminUsers},'↻ Refresh')));
   if(adminUsersLoading) usersPanel.append(h('p',{class:'muted'},'Loading players…'));
   else if(!adminUsers.length) usersPanel.append(h('p',{class:'muted'},'No players found.'));
   adminUsers.forEach(player=>{
     const grant=h('button',{class:'alt',onclick:async()=>{const raw=prompt('How many coins to grant? (1–10,000)','100');if(raw===null)return;const amount=Number(raw);if(!Number.isInteger(amount)||amount<1||amount>10000)return toast('Enter a whole number from 1 to 10,000');const reason=prompt('Reason for coin grant (optional):','Admin reward')||'';const r=await api('/api/admin/coins',{userId:player.id,amount,reason});if(r.error)return toast(r.error);toast('Granted '+amount+' coins to @'+player.username);loadAdminUsers();if(player.id===S.me.id)loadShop();}},'＋ Give coins');
-    usersPanel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},(player.is_admin?'🛡 ':'')+'@'+player.username),h('strong',{},'🪙 '+player.coins)),h('div',{class:'muted'},'Rating '+player.rating+' · '+player.games+' games · '+player.wins+' wins · Joined '+new Date(player.created).toLocaleDateString()),player.id===S.me.id?h('span',{class:'muted'},'Your account'):grant));
+    usersPanel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},(player.is_admin?'🛡 ':'')+'@'+player.username),h('strong',{},'🪙 '+player.coins)),h('div',{class:'muted'},'Rating '+player.rating+' · '+player.games+' games · '+player.wins+' wins · Joined '+new Date(player.created).toLocaleDateString()),grant));
   });
   return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin panel'),h('p',{class:'muted'},'Manage player reports and player coin balances.'),usersPanel,panel,bottomNav('admin')));
 }

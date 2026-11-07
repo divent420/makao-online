@@ -209,6 +209,24 @@
   .rule-toggle:hover .rule-tooltip,.rule-toggle:focus-visible .rule-tooltip { opacity:1; visibility:visible; transform:translate(-50%,0); }
   @media(max-width:760px) { .rule-button-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; } .rule-toggle { min-height:60px; } }
   @media(max-width:420px) { .rule-button-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .rule-settings { gap:7px; } }
+
+  /* Saved game history and replay viewer */
+  .game-history-panel { margin-bottom:14px; }
+  .history-row { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); }
+  .history-row:last-child { border-bottom:0; }
+  .replay-summary { margin-bottom:12px; }
+  .replay-progress { height:6px; margin-top:10px; background:#ffffff18; border-radius:8px; overflow:hidden; }
+  .replay-progress>div { height:100%; background:#43c985; border-radius:8px; }
+  .replay-players { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:16px; }
+  .replay-player { min-width:0; padding:10px; }
+  .replay-active { border-color:#e9bd4d; box-shadow:0 0 0 1px #e9bd4d55; }
+  .replay-hand { display:flex; flex-wrap:wrap; gap:4px; margin-top:9px; }
+  .replay-hand .card { width:38px; height:55px; padding:4px; font-size:12px; }
+  .replay-hand .card .s { font-size:17px; }
+  .replay-timeline { display:grid; gap:5px; max-height:300px; overflow:auto; }
+  .replay-move { text-align:left; font-size:12px; white-space:normal; }
+  .replay-move.selected { outline:2px solid #e9bd4d; background:#344a3d; }
+  @media(max-width:520px) { .history-row { align-items:flex-start; } .history-row button { flex-shrink:0; } .replay-players { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -224,6 +242,8 @@ let token = localStorage.getItem('mk_token');
 let S = null;               // latest server state
 let es = null;
 let board = [];             // leaderboard rows
+let gameHistoryData = null, gameHistoryLoading = false, gameHistoryLoadedAt = 0;
+let replayData = null, replayStep = 0, replayTimer = null;
 let sel = [];               // selected hand cards
 let choose = null;          // pending Jack/Ace choice: { kind, cards }
 let sayMakao = false;
@@ -256,6 +276,59 @@ async function loadProgression() {
   finally { progressionLoading = false; }
   if (activeScreen === 'profile' && !profileTarget) render();
 }
+async function loadGameHistory(force = false) {
+  if (gameHistoryLoading || (!force && gameHistoryData && Date.now()-gameHistoryLoadedAt<15000)) return;
+  gameHistoryLoading = true;
+  try { const r = await api('/api/games'); if (!r.error) gameHistoryData = r.games || []; }
+  catch (_) { /* history can be retried from the lobby */ }
+  finally { gameHistoryLoading = false; gameHistoryLoadedAt = Date.now(); }
+  if (activeScreen === 'home' && S && !S.room) render();
+}
+async function openGameReplay(id) {
+  if (replayTimer) { clearInterval(replayTimer); replayTimer=null; }
+  replayData = null; replayStep = 0; activeScreen = 'replay'; render();
+  const r = await api('/api/games/' + encodeURIComponent(id));
+  if (r.error) { activeScreen='home'; render(); return toast(r.error); }
+  replayData = r.game; replayStep = 0; render();
+}
+function replayScreen() {
+  if (!replayData) return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel muted'},'Loading replay…')));
+  const g=replayData, frames=g.snapshots||[], st=frames[Math.max(0,Math.min(replayStep,frames.length-1))]||{};
+  const players=st.players||[], current=players[st.turn];
+  const pct=frames.length>1?Math.round(replayStep/(frames.length-1)*100):100;
+  const playerRows=players.map((p,i)=>h('div',{class:'panel replay-player'+(i===st.turn&&st.winner==null?' replay-active':'')},
+    h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},p.name),h('span',{class:'muted'},p.out?'Left':(p.hand||[]).length+' cards')),
+    h('div',{class:'replay-hand'},(p.hand||[]).map(c=>cardEl(c)))));
+  const timeline=frames.slice(Math.max(0,replayStep-35),replayStep+1).map((frame,j)=>{
+    const absolute=Math.max(0,replayStep-35)+j, log=frame.log||[], msg=log.length?log[log.length-1]:'Game started';
+    return h('button',{class:'alt replay-move'+(absolute===replayStep?' selected':''),onclick:()=>{replayStep=absolute;render();}},absolute===0?'Start':('Step '+absolute+' · '+msg));
+  });
+  const top=(st.discard||[]).slice(-1)[0];
+  const content=h('div',{class:'wrap'},topBar(),
+    h('div',{class:'screen-title'},'Game replay #'+g.id),
+    h('div',{class:'panel replay-summary'},
+      h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'🏆 '+(players[st.winner]?.name||'Game replay')),h('span',{class:'muted'},new Date(g.finished).toLocaleString())),
+      h('div',{class:'muted'},(g.players||[]).map(p=>p.name).join(' · ')),
+      h('div',{class:'muted',style:'margin-top:4px'},'Step '+replayStep+' of '+Math.max(0,frames.length-1)+' · '+(current?current.name+' to play':'Game finished')),
+      h('div',{class:'replay-progress'},h('div',{style:'width:'+pct+'%'}))),
+    h('div',{class:'panel',style:'margin-top:12px'},
+      h('div',{class:'row',style:'justify-content:center;gap:18px'},
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Discard pile'),top?cardEl(top):h('span',{},'—')),
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Deck remaining'),h('strong',{},String((st.deck||[]).length))),
+        h('div',{style:'text-align:center'},h('div',{class:'muted'},'Active suit'),h('span',{class:'suit'},SYM[st.suit]||'—'))),
+      h('div',{class:'replay-players'},playerRows)),
+    h('div',{class:'panel',style:'margin-top:12px'},
+      h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Move controls'),h('span',{class:'muted'},pct+'%')),
+      h('div',{class:'row'},
+        h('button',{class:'alt',disabled:replayStep<=0,onclick:()=>{replayStep=0;render();}},'⏮ Start'),
+        h('button',{class:'alt',disabled:replayStep<=0,onclick:()=>{replayStep=Math.max(0,replayStep-1);render();}},'← Previous'),
+        h('button',{disabled:replayStep>=frames.length-1,onclick:()=>{replayStep=Math.min(frames.length-1,replayStep+1);render();}},'Next →'),
+        h('button',{class:'alt',disabled:replayStep>=frames.length-1,onclick:()=>{replayStep=frames.length-1;render();}},'⏭ End')),
+      h('input',{type:'range',min:0,max:Math.max(0,frames.length-1),value:replayStep,style:'width:100%;margin-top:12px',oninput:e=>{replayStep=Number(e.target.value);render();}})),
+    h('div',{class:'panel',style:'margin-top:12px'},h('h2',{},'Move history'),h('div',{class:'replay-timeline'},timeline)),
+    h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{if(replayTimer)clearInterval(replayTimer);replayTimer=null;activeScreen='home';replayData=null;render();}},'← Back to lobby'));
+  mount(content);
+}
 function showOwnProfile() { profileTarget = null; progressionData = null; progressionError = ''; activeScreen = 'profile'; render(); }
 async function loadShop() {
   shopLoading = true; shopError = '';
@@ -287,7 +360,7 @@ async function openPlayerProfile(id) {
   }
   activeScreen = 'profile'; render();
 }
-function goBack() { activeScreen = 'home'; profileTarget = null; profileAvatar = null; render(); }
+function goBack() { if(replayTimer){clearInterval(replayTimer);replayTimer=null;} activeScreen = 'home'; profileTarget = null; profileAvatar = null; render(); }
 const THEME_DEFAULT = { felt:'emerald', back:'royal', cards:'classic' };
 let tableTheme = { ...THEME_DEFAULT, ...JSON.parse(localStorage.getItem('mk_theme') || '{}') };
 let freeAppearance = JSON.parse(localStorage.getItem('mk_free_appearance') || '{}');
@@ -418,7 +491,7 @@ function chatBox(room) {
 function topBar() {
   const me=S.me;
   return h('div', { class: 'bar' },
-    activeScreen === 'profile' || activeScreen === 'shop' || activeScreen === 'social' || activeScreen === 'admin' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
+    activeScreen === 'profile' || activeScreen === 'shop' || activeScreen === 'social' || activeScreen === 'admin' || activeScreen === 'replay' ? h('button', { class:'alt', onclick:goBack, 'aria-label':'Back' }, '← Back') : null,
     h('h1', {}, '🂡 Makao'),
     activeScreen !== 'shop' ? h('button',{class:'alt',onclick:showShop},'🎨 Customize') : null,
     activeScreen !== 'social' ? h('button',{class:'alt',onclick:showSocial},'👥 Social') : null,
@@ -561,6 +634,7 @@ function socialScreen() {
 }
 
 function lobbyScreen() {
+  if (!gameHistoryLoading && Date.now()-gameHistoryLoadedAt>15000) loadGameHistory();
   const list = h('div', { class: 'list' });
   if (!S.lobbies.length) list.append(h('div', { class: 'muted' }, 'No tables yet. Create the first table!'));
   S.lobbies.forEach((l) => list.append(h('div', {},
@@ -572,6 +646,14 @@ function lobbyScreen() {
     h('td', {}, h('button', { class:'alt player-link', style:'padding:5px 8px;background:transparent;box-shadow:none;text-align:left', onclick:()=>openPlayerProfile(r.id) }, (r.avatar||'🂡')+' '+(r.display_name||r.username))),
     h('td', {}, r.rating), h('td', {}, r.wins + ' / ' + r.games))));
   if (!board.length) tbl.append(h('tr', {}, h('td', { colspan: 4, class: 'muted' }, 'No ranked games yet')));
+  const historyPanel=h('div',{class:'panel game-history-panel',style:'margin-top:14px'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Recent games'),h('button',{class:'alt',onclick:()=>loadGameHistory(true)},'↻ Refresh')));
+  if(gameHistoryLoading&&!gameHistoryData) historyPanel.append(h('div',{class:'muted'},'Loading your games…'));
+  else if(!gameHistoryData||!gameHistoryData.length) historyPanel.append(h('div',{class:'muted'},'Your completed games will appear here with full move-by-move replays.'));
+  else gameHistoryData.slice(0,8).forEach(g=>{
+    const winner=(g.players||[]).find(p=>p.id===g.winnerId);
+    const names=(g.players||[]).map(p=>p.name).join(' · ');
+    historyPanel.append(h('div',{class:'history-row'},h('div',{class:'grow'},h('strong',{},'🏆 '+(winner?winner.name:'Game completed')),h('div',{class:'muted'},new Date(g.finished).toLocaleString()+' · '+names)),h('button',{onclick:()=>openGameReplay(g.id)},'▶ Replay')));
+  });
   const nav=bottomNav('home');
   mount(h('div', { class: 'wrap' }, topBar(),
     h('div',{class:'screen-title'},'Find your table'),
@@ -598,6 +680,7 @@ function lobbyScreen() {
         h('h2', {}, 'Leaderboard'), tbl,
         h('div', { class: 'muted', style: 'margin-top:12px' }, 'Your record: ' + S.me.wins + ' wins / ' + S.me.games + ' games'),
         h('button',{class:'alt',style:'margin-top:14px;width:100%',onclick:showShop},'🎨 Customize your table'))),
+    historyPanel,
     h('details', { class: 'panel', style: 'margin-top:14px' }, h('summary', {}, 'How to play'), h('ul', { class: 'rules' }, RULES.map((r) => h('li', {}, r)))),nav));
 }
 
@@ -918,6 +1001,7 @@ function render() {
   if (!token) return authScreen();
   if (!S) return mount(h('div', { class: 'wrap muted' }, 'Connecting…'));
   if (activeScreen === 'profile') return profileScreen();
+  if (activeScreen === 'replay') return replayScreen();
   if (activeScreen === 'customize' || activeScreen === 'shop') return shopScreen();
   if (activeScreen === 'social') return socialScreen();
   if (activeScreen === 'admin') return adminScreen();

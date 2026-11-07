@@ -274,7 +274,7 @@ table td,table th{border-color:#ffffff18}
 .game-screen{max-width:1120px;padding-top:14px}
 .game-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px;padding:10px 14px;border:1px solid #ffffff15;border-radius:17px;background:#102219dc}
 .game-title-lockup{display:flex;align-items:center;gap:12px;min-width:0}.game-title-lockup strong{display:block;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:#f5e5b2}.game-title-lockup small{display:block;margin-top:3px;font-size:9px;letter-spacing:.18em;color:#9db19f}
-.leave-game-button{padding:9px 14px;background:#263b30;color:#f2e9d1;border:1px solid #50634b;box-shadow:none}
+.leave-game-button{padding:9px 14px;flex:0 0 auto;background:#263b30;color:#f2e9d1;border:1px solid #50634b;box-shadow:none}
 .game-table-frame{padding:7px;border-radius:27px;background:linear-gradient(135deg,#9a7a3b,#d4b86d 22%,#72552c 75%,#c8a75b);box-shadow:0 18px 48px #0006}
 .game-table-felt{position:relative;display:flex;flex-direction:column;gap:15px;min-height:590px;padding:22px;border:1px solid #ffffff36;border-radius:22px;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt2) 100%);box-shadow:inset 0 0 65px #001b13a8,inset 0 0 0 5px #ffffff08;overflow:hidden}
 .game-opponents{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;min-height:68px}
@@ -347,7 +347,7 @@ table td,table th{border-color:#ffffff18}
 .admin-players-panel,.admin-reports-panel { background:linear-gradient(145deg,#172f25,#11251d) !important; border-color:#315746 !important; }
 
 /* Stable timer slot: countdown text must never reflow the table. */
-.game-timer{display:flex;align-items:center;justify-content:center;width:88px;min-width:88px;height:23px;min-height:23px;box-sizing:border-box;flex:0 0 88px;margin:0 auto;padding:0 6px;font-size:10px;font-weight:750;border:1px solid #b99a4c55;border-radius:999px;background:#09251b;color:#f3d783;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;}
+.game-timer{display:flex;align-items:center;justify-content:center;flex:0 0 92px;width:92px;height:34px;box-sizing:border-box;margin:0;padding:0 9px;border:1px solid #b99a4c88;border-radius:12px;background:linear-gradient(145deg,#193d2d,#0b241a);color:#f3d783;font-size:12px;font-weight:850;letter-spacing:.03em;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:inset 0 1px #ffffff12,0 3px 10px #0003;}
 .game-table-felt{align-items:stretch;}
 .game-log{min-height:34px;max-height:34px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
 .rule-setting,.rule-settings,.rule-settings label{background:#172f25!important;border-color:#315746!important;color:#e8eee5!important;}
@@ -357,7 +357,7 @@ table td,table th{border-color:#ffffff18}
 .challenge-track{background:#0b2119!important;border-color:#315744!important;}
 .challenge-track>div{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
 .shop-preview-section .shop-preview{margin-top:8px;}
-  .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-match-button,.pass-play-button{min-height:62px;padding:10px 9px}.pass-play-button{gap:6px}.pass-play-button strong{font-size:12px}.pass-play-button small{font-size:9px}.game-timer{width:82px;min-width:82px;flex-basis:82px;height:22px;min-height:22px;font-size:9px}}
+  .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-match-button,.pass-play-button{min-height:62px;padding:10px 9px}.pass-play-button{gap:6px}.pass-play-button strong{font-size:12px}.pass-play-button small{font-size:9px}.game-header{gap:7px;padding:8px}.game-timer{flex-basis:78px;width:78px;height:31px;font-size:11px;padding:0 5px}.leave-game-button{padding:8px 10px;font-size:11px}.game-title-lockup{gap:7px}.game-title-lockup strong{font-size:13px}}
 </style>
 </head>
 <body>
@@ -1078,13 +1078,14 @@ function gameScreen() {
     h('span',{class:'own-hand-count'},g.hand.length+' cards'));
   const titleBar=h('div',{class:'game-header'},
     h('div',{class:'game-title-lockup'},h('span',{class:'brand-card'},'♠'),h('div',{},h('strong',{},S.room.name),h('small',{},local?'PASS & PLAY':(S.room.ranked?'RANKED MATCH':'CASUAL MATCH')))),
+    timer,
     h('button',{class:'leave-game-button',onclick:()=>{if(confirm('Leave the game? This counts as a loss.'))act({t:'leaveRoom'});}},'Leave'));
   mount(h('div', { class: 'wrap app-shell game-screen' },
     titleBar,
     h('div',{class:'game-table-frame'},
       h('div',{class:'game-table-felt'},opps,banner,center,
         h('div',{class:'game-log'},g.log.slice(-2).map(l=>h('div',{},l))),
-        timer,actions,
+        actions,
         h('div',{class:'your-hand-label'},'YOUR HAND'),
         hand,ownPlayer)),
     h('div', { class: 'panel game-chat-panel' }, h('div',{class:'section-heading'},h('h2',{},'Table chat')),chatBox(S.room)),
@@ -1093,14 +1094,14 @@ function gameScreen() {
       S.room.aiGame ? h('button',{style:'margin-top:12px',onclick:()=>act({t:'rematchAI'})},'🤖 Play again') : (!S.room.tournament ? h('div',{style:'margin-top:12px'},h('button',{disabled:(S.room.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const r=await act({t:'rematch'});if(r.ok)toast(r.started?'Rematch started':'Rematch vote recorded ('+r.votes+'/'+r.required+')');}},(S.room.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch vs players'),h('div',{class:'muted',style:'margin-top:8px'},(S.room.rematchVotes||[]).length+' / '+S.room.members.length+' players want a rematch')):null),
       h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null,
     bottomNav('home')));
-  if(local){const timerEl=$('timer');if(timerEl)timerEl.textContent='Local game · no timer';}else tick();
+  if(local){const timerEl=$('timer');if(timerEl)timerEl.style.display='none';}else tick();
 }
 function tick() {
   const t = $('timer');
   if (S?.room?.localGame) { if(t) t.textContent='Local game · no timer'; return; }
   if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }
   const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
-  t.textContent = S.game.myTurn ? s + 's · Your turn' : s + 's';
+  t.textContent = '⏱ ' + s + 's';
   t.style.color = S.game.myTurn && s <= 10 ? '#ff8a80' : '';
 }
 setInterval(tick, 500);
@@ -1153,7 +1154,7 @@ function localLobbyScreen(){
     h('p',{class:'muted'},'Set up your players before starting. Everyone plays on this device; cards are hidden behind a handoff screen between turns.'),
     h('label',{},'Number of players',h('select',{id:'localCount',style:'width:100%;margin-top:6px',onchange:()=>{const n=Number($('localCount').value);for(let i=1;i<=4;i++)$('localPlayerField'+i).style.display=i<=n?'block':'none';}},[2,3,4].map(n=>h('option',{value:n,selected:n===2},n+' players')))),
     fields,
-    h('div',{class:'row',style:'justify-content:space-between;margin-top:20px'},h('button',{class:'alt',onclick:()=>{activeScreen='home';render();}},'← Back'),h('button',{onclick:async()=>{const n=Number($('localCount').value);const names=Array.from({length:n},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}}},'Start game →')));
+    h('div',{class:'row',style:'justify-content:space-between;margin-top:20px'},h('button',{class:'alt',onclick:()=>{activeScreen='home';render();}},'← Back'),h('button',{onclick:async()=>{const n=Number($('localCount').value);const names=Array.from({length:n},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;activeScreen='home';render();}}},'Start game →')));
   mount(h('div',{class:'wrap app-shell'},topBar(),panel,bottomNav('home')));
 }
 

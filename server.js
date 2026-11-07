@@ -145,7 +145,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, localGame: !!room.localGame, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
@@ -164,7 +164,7 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
     members: r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id) }; }),
     chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
@@ -181,7 +181,7 @@ function stateFor(uid) {
     })),
     room: room ? roomView(room) : null,
     matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
-    game: room && (room.game || (room.result && room.lastGame)) ? M.view(room.game || room.lastGame, uid) : null,
+    game: room && (room.game || (room.result && room.lastGame)) ? M.view(room.game || room.lastGame, room.localGame && room.game ? room.game.players[room.game.turn]?.id : uid) : null,
   };
 }
 function pushAll() {
@@ -248,7 +248,7 @@ function restoreRooms() {
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
-        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null,
+        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, localGame: !!saved.localGame,
         rules: M.sanitizeRules(saved.rules),
       };
       if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
@@ -273,7 +273,7 @@ function finishGame(room) {
   const st = room.game;
   const players = st.players;
   const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
-  const ranked = !room.aiGame && !room.tournamentId && M.isRanked(room.rules);
+  const ranked = !room.aiGame && !room.localGame && !room.tournamentId && M.isRanked(room.rules);
   const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
   const playedAt = Date.now();
   const result = { id: playedAt, ranked, tournament: !!room.tournamentId, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
@@ -317,7 +317,8 @@ function finishGame(room) {
 function afterAction(room) {
   recordGameState(room);
   if (room.game && room.game.winner != null) finishGame(room);
-  else armTimer(room);
+  else if (!room.localGame) armTimer(room);
+  else { room.game.deadline = Date.now() + 86400000; clearTimeout(room.timer); }
   persistRoom(room);
   pushAll();
 }
@@ -348,6 +349,18 @@ function handleAct(user, m) {
   const uid = user.id;
   const room = rooms.get(userRoom.get(uid));
   switch (m.t) {
+    case 'localStart': {
+      if (room) return { error: 'Leave your current table first' };
+      const names = Array.isArray(m.names) ? m.names.slice(0, 4).map((n,i) => str(n,24).trim() || 'Player '+(i+1)) : [];
+      if (names.length < 2) return { error: 'Enter at least two player names' };
+      const id = crypto.randomBytes(4).toString('hex');
+      const list = names.map((name,i) => ({ id: i===0 ? uid : -(1000+i), name }));
+      for (let i=list.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
+      const rules = { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 };
+      const r = { id, name: 'Pass & Play', host: uid, max: list.length, members: [uid], game: M.newGame(list,rules), lastGame:null, rematchVotes:[], chat:[], result:null, timer:null, aiGame:false, localGame:true, rules };
+      r.game.deadline = Date.now()+86400000;
+      rooms.set(id,r); userRoom.set(uid,id); persistRoom(r); pushAll(); return {ok:true};
+    }
     case 'quickMatch': {
       if (room) return { error: 'Leave your current table first' };
       if (matchmakingQueue.has(uid)) return { ok: true, waiting: true };
@@ -475,8 +488,8 @@ function handleAct(user, m) {
       if (!room || !room.game) return { error: 'No game running' };
       const st = room.game;
       const r = m.t === 'play'
-        ? M.play(st, uid, Array.isArray(m.cards) ? m.cards.map((c) => str(c, 3)) : [], { demand: str(m.demand, 3), suit: str(m.suit, 1), makao: !!m.makao })
-        : M[m.t](st, uid);
+        ? M.play(st, room.localGame ? st.players[st.turn].id : uid, Array.isArray(m.cards) ? m.cards.map((c) => str(c, 3)) : [], { demand: str(m.demand, 3), suit: str(m.suit, 1), makao: !!m.makao })
+        : M[m.t](st, room.localGame ? st.players[st.turn].id : uid);
       if (r.error) return r;
       afterAction(room);
       return { ok: true };

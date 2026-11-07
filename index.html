@@ -371,6 +371,9 @@ table td,table th{border-color:#ffffff18}
 .challenge-track{background:#0b2119!important;border-color:#315744!important;}
 .challenge-track>div{background:linear-gradient(90deg,#4ba879,#d4bd65)!important;}
 .shop-preview-section .shop-preview{margin-top:8px;}
+.shop-preview-section{position:sticky!important;position:-webkit-sticky;top:12px;align-self:start;z-index:40;max-height:calc(100vh - 24px);overflow:auto;overscroll-behavior:contain;box-shadow:0 12px 28px #0007;}
+.shop-preview-section h2{position:sticky;top:0;z-index:2;background:var(--panel,#14241b);padding:3px 0 8px;}
+@media(max-width:760px){.shop-preview-section{top:6px;max-height:42vh;padding:10px;}.shop-preview-section .shop-preview{transform:scale(.88);transform-origin:top center;margin-bottom:-12px;}}
   .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-match-button,.pass-play-button{min-height:62px;padding:10px 9px}.pass-play-button{gap:6px}.pass-play-button strong{font-size:12px}.pass-play-button small{font-size:9px}.game-header{gap:7px;padding:8px}.game-timer{flex-basis:78px;width:78px;height:31px;font-size:11px;padding:0 5px}.leave-game-button{padding:8px 10px;font-size:11px}.game-title-lockup{gap:7px}.game-title-lockup strong{font-size:13px}}
 </style>
 </head>
@@ -703,7 +706,8 @@ function rulesPanel(r, isHost) {
           [...new Set([...values,current])].sort((a,b)=>a-b).map(v=>h('option',{value:v,selected:v===current},id==='rs_turnSeconds'?v+' seconds':id==='rs_deckCount'?v+(v===1?' deck':' decks'):v+' cards')))
       : h('strong',{},id==='rs_turnSeconds'?current+' seconds':id==='rs_deckCount'?current+(current===1?' deck':' decks'):current+' cards'));
   const settings = h('div',{class:'rule-settings'},
-    setting('rs_handSize','Starting hand',[3,4,5,6,7],R.handSize),
+    setting('rs_handSize','Starting hand',[3,4,5,6,7,8,9,10,11,12],R.handSize),
+     setting('rs_deckCount','Number of decks',[1,2,3,4],R.deckCount||1),
     setting('rs_turnSeconds','Time per turn',[15,30,45,60,90,120,180],R.turnSeconds));
   const changed = !r.ranked;
   return h('div',{class:'lobby-rules'},

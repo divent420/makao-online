@@ -375,6 +375,7 @@ let board = [];             // leaderboard rows
 let gameHistoryData = null, gameHistoryLoading = false, gameHistoryLoadedAt = 0;
 let replayData = null, replayStep = 0, replayTimer = null;
 let sel = [];               // selected hand cards
+let localReady = false, localTurnId = null;
 let choose = null;          // pending Jack/Ace choice: { kind, cards }
 let sayMakao = false;
 let authErr = '';
@@ -564,6 +565,7 @@ function connect() {
       const prevTurn = S && S.game ? S.game.myTurn : false;
       const leftTable = !!(S && S.room && !m.room);
       S = m;
+      if (m.room?.localGame && m.game) { const active=m.game.players.find(p=>p.turn)?.id ?? null; if(active!==localTurnId){localTurnId=active;localReady=false;sel=[];choose=null;sayMakao=false;} } else {localTurnId=null;localReady=false;}
       if (leftTable) loadGameHistory(true);
       if (activeScreen === 'shop' && !shopLoading) loadShop();
       sel = sel.filter((c) => S.game && S.game.hand.includes(c));
@@ -800,6 +802,11 @@ function lobbyScreen() {
     h('button',{class:'option-play',onclick:()=>act({t:'playAI',count:Number($('aiCount').value),difficulty:$('aiDifficulty').value})},'Play →'));
   const privatePanel=h('button',{class:'play-option-card friends-option',onclick:async()=>{const r=await act({t:'createRoom',name:(S.me.displayName||S.me.username)+"'s table",max:4});if(r.error)return;activeScreen='social';await loadSocial();render();}},
     h('div',{class:'option-icon'},'👥'),h('div',{class:'option-copy'},h('strong',{},'Play with friends'),h('p',{},'Create a private lobby, then invite your friends')),h('span',{class:'option-arrow'},'→'));
+  const localPanel=h('section',{class:'play-option-card local-option',style:'margin-top:12px;display:block'},
+    h('div',{class:'row',style:'align-items:center;gap:12px'},h('div',{class:'option-icon'},'🃏'),h('div',{class:'option-copy grow'},h('strong',{},'Pass & Play'),h('p',{},'Play together on one device · 2–4 players · no ratings'))),
+    h('div',{class:'ai-controls',style:'margin:10px 0'},h('select',{id:'localCount','aria-label':'Local players',onchange:(e)=>{for(let n=1;n<=4;n++){$('localName'+n).style.display=n<=Number(e.target.value)?'':'none';}}},[2,3,4].map(n=>h('option',{value:n,selected:n===2},n+' players')))),
+    h('div',{class:'settings-grid',style:'gap:8px'},[1,2,3,4].map(n=>h('input',{id:'localName'+n,placeholder:'Player '+n,value:n===1?(S.me.displayName||S.me.username):'',maxlength:24,style:n>2?'display:none':''}))),
+    h('button',{class:'option-play',style:'margin-top:10px;width:100%',onclick:async()=>{const count=Number($('localCount').value);const names=Array.from({length:count},(_,i)=>$('localName'+(i+1)).value.trim()||'Player '+(i+1));const r=await act({t:'localStart',names});if(!r.error){localReady=false;localTurnId=null;}}},'Start local game →'));
   const openTables=h('section',{class:'home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Open tables'),h('p',{},S.lobbies.length+' tables looking for players')),h('button',{class:'text-action',onclick:()=>{const el=document.getElementById('create-table');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}},'+ Create')),
     list,
@@ -811,7 +818,7 @@ function lobbyScreen() {
   const welcome=h('div',{class:'welcome-row'},h('div',{},h('div',{class:'eyebrow'},'WELCOME BACK'),h('h1',{},'Ready to play?'),h('p',{},'Your next win is one game away.')),h('div',{class:'level-pill'},h('span',{},'♛'),h('strong',{},'Player'),h('small',{},'Level up as you play')));
   mount(h('div',{class:'wrap app-shell'},topBar(),welcome,
     h('div',{class:'home-layout'},
-      h('main',{class:'home-main'},h('section',{class:'play-hub'},h('div',{class:'section-heading'},h('div',{},h('h2',{},'Choose your game'),h('p',{},'The table is waiting for you'))),quick,h('div',{class:'play-options'},aiPanel,privatePanel)),openTables,historyPanel),
+      h('main',{class:'home-main'},h('section',{class:'play-hub'},h('div',{class:'section-heading'},h('div',{},h('h2',{},'Choose your game'),h('p',{},'The table is waiting for you'))),quick,h('div',{class:'play-options'},aiPanel,privatePanel,localPanel)),openTables,historyPanel),
       h('aside',{class:'home-sidebar'},rankPanel,h('section',{class:'promo-card'},h('div',{class:'promo-sparkle'},'✦'),h('div',{class:'eyebrow'},'MAKE IT YOURS'),h('h3',{},'Your style. Your table.'),h('p',{},'Unlock card backs, table themes and avatar frames.'),h('button',{class:'promo-button',onclick:showShop},'Explore shop →')))),
     h('details',{class:'how-to-panel'},h('summary',{},'How to play Makao'),h('ul',{class:'rules'},RULES.map(r=>h('li',{},r)))),
     bottomNav('home')));
@@ -1014,8 +1021,10 @@ function clickCard(c) {
 
 function gameScreen() {
   const g = S.game;
+  const local=!!S.room.localGame, activePlayer=local?g.players.find(p=>p.turn):null;
+  if(local&&!localReady){const name=activePlayer?.name||'Next player';mount(h('div',{class:'wrap app-shell',style:'min-height:75vh;display:grid;place-items:center'},h('div',{class:'panel',style:'max-width:440px;width:100%;text-align:center;padding:30px;border-radius:22px'},h('div',{style:'font-size:52px;margin-bottom:12px'},'🔒'),h('div',{class:'eyebrow'},'PASS THE DEVICE'),h('h1',{style:'font-size:28px;margin:8px 0'},name+'’s turn'),h('p',{class:'muted',style:'line-height:1.6'},'Make sure the previous player cannot see your cards. When you are ready, reveal your hand and play your turn.'),h('button',{style:'width:100%;margin-top:14px;padding:14px;font-size:16px',onclick:()=>{localReady=true;render();}},'I’m ready — show my cards'),h('button',{class:'alt',style:'margin-top:10px;width:100%',onclick:()=>{if(confirm('End this local game?'))act({t:'leaveRoom'});}},'End local game'))));return;}
   const opps = h('div', { class: 'game-opponents' });
-  g.players.filter((p) => p.id !== S.me.id).forEach((p) => {
+  g.players.filter((p) => p.id !== (local?activePlayer?.id:S.me.id)).forEach((p) => {
     const mini = h('div', { class: 'mini' });
     for (let i = 0; i < Math.min(p.count, 12); i++) mini.append(h('i'));
     const avatar=h('span',{class:'game-avatar'},p.avatar||'🂡');
@@ -1034,7 +1043,7 @@ function gameScreen() {
     ? 'Draw ' + pend.n + ' cards' + (canStack ? ', or answer with a penalty card (2 / 3 / K♥ / K♠)' : '')
     : 'Wait ' + pend.n + (pend.n > 1 ? ' turns' : ' turn') + (canStack ? ', or answer with a 4' : '')));
   else if (dem) banner.append(h('span', {}, 'Jack demands ' + dem.rank + ' (or play a J)'));
-  else banner.append(h('span',{},g.myTurn?'Your turn — make your move':'Waiting for the next player'));
+  else banner.append(h('span',{},local?(activePlayer?.name+' — your turn'):(g.myTurn?'Your turn — make your move':'Waiting for the next player')));
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
   const center = h('div', { class: 'game-center-piles' },
@@ -1068,11 +1077,11 @@ function gameScreen() {
 
   const timer = h('div', { class: 'game-timer', id: 'timer', 'aria-live':'off' });
   const ownPlayer=h('div',{class:'own-player-bar'},
-    h('span',{class:'avatar own-game-avatar'},S.me.avatar||'🂡'),
-    h('div',{class:'own-player-copy'},h('strong',{},S.me.displayName||S.me.username),h('small',{},g.myTurn?'Your turn':g.hand.length+' cards in hand')),
+    h('span',{class:'avatar own-game-avatar'},local?'🃏':(S.me.avatar||'🂡')),
+    h('div',{class:'own-player-copy'},h('strong',{},local?(activePlayer?.name||'Player'):(S.me.displayName||S.me.username)),h('small',{},g.myTurn?'Your turn':g.hand.length+' cards in hand')),
     h('span',{class:'own-hand-count'},g.hand.length+' cards'));
   const titleBar=h('div',{class:'game-header'},
-    h('div',{class:'game-title-lockup'},h('span',{class:'brand-card'},'♠'),h('div',{},h('strong',{},S.room.name),h('small',{},S.room.ranked?'RANKED MATCH':'CASUAL MATCH'))),
+    h('div',{class:'game-title-lockup'},h('span',{class:'brand-card'},'♠'),h('div',{},h('strong',{},S.room.name),h('small',{},local?'PASS & PLAY':(S.room.ranked?'RANKED MATCH':'CASUAL MATCH')))),
     h('button',{class:'leave-game-button',onclick:()=>{if(confirm('Leave the game? This counts as a loss.'))act({t:'leaveRoom'});}},'Leave'));
   mount(h('div', { class: 'wrap app-shell game-screen' },
     titleBar,
@@ -1088,7 +1097,7 @@ function gameScreen() {
       S.room.aiGame ? h('button',{style:'margin-top:12px',onclick:()=>act({t:'rematchAI'})},'🤖 Play again') : (!S.room.tournament ? h('div',{style:'margin-top:12px'},h('button',{disabled:(S.room.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const r=await act({t:'rematch'});if(r.ok)toast(r.started?'Rematch started':'Rematch vote recorded ('+r.votes+'/'+r.required+')');}},(S.room.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch vs players'),h('div',{class:'muted',style:'margin-top:8px'},(S.room.rematchVotes||[]).length+' / '+S.room.members.length+' players want a rematch')):null),
       h('button',{class:'alt',style:'margin-top:12px',onclick:()=>{dismissed=S.room.result.id;localStorage.setItem('mk_dismissed',dismissed);}},'Keep table')) : null,
     bottomNav('home')));
-  tick();
+  if(local){const timerEl=$('timer');if(timerEl)timerEl.textContent='Local game · no timer';}else tick();
 }
 function tick() {
   const t = $('timer');

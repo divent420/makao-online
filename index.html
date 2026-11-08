@@ -1284,6 +1284,10 @@ function gameScreen() {
   const titleBar=h('div',{class:'game-header'},
     h('div',{class:'game-title-lockup'},h('span',{class:'brand-card'},'♠'),h('div',{},h('strong',{},S.room.name),h('small',{},local?'PASS & PLAY':(S.room.ranked?'RANKED MATCH':'CASUAL MATCH')))),
     timer,
+    S.me.isAdmin && !finished && !local && g.players.some(p=>p.id===S.me.id)
+      ? h('button',{class:'alt',style:'border-color:#d69b42;color:#f0c36a',onclick:async()=>{if(!confirm('End this game now and record an admin win? This will save the result and count toward game statistics.'))return;const r=await api('/api/admin/finish-game',{});if(r.error)toast(r.error);else toast('Test game finished — admin win recorded.');}}
+        ,'Finish test game · Win')
+      : null,
     h('button',{class:'leave-game-button',onclick:()=>{if(confirm('Leave the game? This counts as a loss.'))act({t:'leaveRoom'});}},'Leave'));
   mount(h('div', { class: 'wrap app-shell game-screen' },
     titleBar,

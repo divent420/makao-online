@@ -175,6 +175,31 @@ function roomView(r) {
 function stateFor(uid) {
   const u = q.byId.get(uid);
   const room = rooms.get(userRoom.get(uid));
+  // A terminal game can survive in a room snapshot if finalization was interrupted.
+  // Finalize it before sending state so clients always receive the results lobby,
+  // never a permanently frozen game board.
+  if (room && room.game && room.game.winner != null && !room.result) {
+    try {
+      finishGame(room);
+      persistRoom(room);
+    } catch (error) {
+      console.error('Could not save completed game results:', error);
+      const st = room.game;
+      const winner = st.players[st.winner];
+      room.lastGame = structuredClone(st);
+      room.result = {
+        id: Date.now(), ranked: false, tournament: !!room.tournamentId,
+        winner: winner?.name || 'Unknown player', winnerId: winner?.id ?? null,
+        rows: st.players.map((player, index) => ({
+          username: player.name, delta: 0, rating: 0, won: index === st.winner
+        })),
+        saveError: true
+      };
+      room.rematchVotes = [];
+      room.game = null;
+      persistRoom(room);
+    }
+  }
   return {
     t: 'state', me: userView(u),
     lobbies: [...rooms.values()].map((r) => ({

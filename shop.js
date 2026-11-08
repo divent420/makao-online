@@ -24,14 +24,21 @@ const CATALOG = [
   { id: 'frame_emerald', name: 'Emerald Avatar Frame', description: 'A polished green gemstone frame.', category: 'avatar_frame', price: 360, icon: '💚', effect: 'emerald' },
   { id: 'frame_solar', name: 'Solar Avatar Frame', description: 'A bright amber ring with a warm outer glow.', category: 'avatar_frame', price: 390, icon: '☀️', effect: 'solar' },
   { id: 'frame_void', name: 'Void Avatar Frame', description: 'A deep indigo ring with a cool violet glow.', category: 'avatar_frame', price: 420, icon: '🌑', effect: 'void' },
-  { id: 'frame_crimson', name: 'Crimson Avatar Frame', description: 'A sharp crimson ring with a red edge glow.', category: 'avatar_frame', price: 400, icon: '♦️', effect: 'crimson' },
+  { id: 'frame_crimson', name: 'Crimson Avatar Frame', description: 'A sharp crimson ring with a red edge glow.', category: 'avatar_frame', price: 400, icon: '', effect: 'crimson' },
+  { id: 'back_cyber', name: 'Cyber Circuit', description: 'Electric cyan circuitry on a midnight base.', category: 'card_back', price: 480, icon: '', effect: 'cyber' },
+  { id: 'back_magma', name: 'Magma Core', description: 'Glowing molten cracks across volcanic stone.', category: 'card_back', price: 520, icon: '', effect: 'magma' },
+  { id: 'back_marble', name: 'Royal Marble', description: 'Polished ivory marble with fine gold veins.', category: 'card_back', price: 560, icon: '', effect: 'marble' },
+  { id: 'felt_nightcity', name: 'Neon District', description: 'A deep urban blue with electric neon edges.', category: 'table_theme', price: 480, icon: '', effect: 'nightcity' },
+  { id: 'felt_sand', name: 'Desert Dusk', description: 'Warm sand and sunset-brown playing surface.', category: 'table_theme', price: 460, icon: '', effect: 'sand' },
+  { id: 'frame_royalblue', name: 'Sapphire Frame', description: 'A bright sapphire edge around your avatar.', category: 'avatar_frame', price: 460, icon: '', effect: 'royalblue' },
+  { id: 'frame_rose', name: 'Rose Gold Frame', description: 'A warm rose-gold avatar outline.', category: 'avatar_frame', price: 440, icon: '', effect: 'rose' },
 ];
 
 function initialize(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_wallets(
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0), updated INTEGER NOT NULL DEFAULT 0
+      coins INTEGER NOT NULL DEFAULT 1000 CHECK(coins >= 0), updated INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS cosmetics(
       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
@@ -55,10 +62,11 @@ function initialize(db) {
   `);
   const insert = db.prepare('INSERT OR IGNORE INTO cosmetics(id,name,description,category,price,icon,effect) VALUES(?,?,?,?,?,?,?)');
   for (const item of CATALOG) insert.run(item.id,item.name,item.description,item.category,item.price,item.icon,item.effect);
+  db.prepare('UPDATE cosmetics SET icon=\'\' WHERE id IN ('+CATALOG.map(()=>'?').join(',')+')').run(...CATALOG.map(item=>item.id));
 }
 
 function ensureWallet(db, userId, now = Date.now()) {
-  db.prepare('INSERT OR IGNORE INTO shop_wallets(user_id,coins,updated) VALUES(?,0,?)').run(userId, now);
+  db.prepare('INSERT OR IGNORE INTO shop_wallets(user_id,coins,updated) VALUES(?,1000,?)').run(userId, now);
 }
 
 // Earn a small amount for playing; AI practice earns half. This is soft currency only.

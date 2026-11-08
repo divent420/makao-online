@@ -1196,7 +1196,7 @@ function roomScreen() {
           : (r.readinessEnabled
               ? h('div',{class:'lobby-ready-controls'},
                   h('button',{class:S.room.members.find(m=>m.id===S.me.id)?.ready?'alt':'',onclick:()=>act({t:'setReady'})},S.room.members.find(m=>m.id===S.me.id)?.ready?'✓ Ready — click to cancel':'I’m ready'),
-                  isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2||r.readyCount<r.members.length+(r.bots||[]).length,title:r.readyCount<r.members.length+(r.bots||[]).length?'Waiting for all players to ready up':'Start the game',onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},r.readyCount+'/'+r.members.length+' players ready'))
+                  isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2||r.readyCount+((S.room.members.find(m=>m.id===S.me.id)?.ready)?0:1)<r.members.length+(r.bots||[]).length,title:r.readyCount+((S.room.members.find(m=>m.id===S.me.id)?.ready)?0:1)<r.members.length+(r.bots||[]).length?'Waiting for other players to ready up':'Start the game',onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},r.readyCount+'/'+r.members.length+' players ready'))
               : (isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2,onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},'Waiting for the host to start…'))),
         h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
       r.result&&!r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null,

@@ -1189,16 +1189,12 @@ function roomScreen() {
       h('div', { class: 'row lobby-controls', style: 'margin-top:12px;flex-wrap:wrap' },
         isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:()=>act({t:'addBot'})},'＋ Add bot'):null,
         isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:async()=>{lobbyFriendPickerOpen=!lobbyFriendPickerOpen;if(lobbyFriendPickerOpen)await loadSocial();else render();}},'＋ Add friend'):null,
-        r.result
-          ? ((r.aiGame || r.members.some(m=>m.bot))
-              ? h('button',{onclick:()=>act({t:r.aiGame?'rematchAI':'rematchBots'})},'🤖 Play again')
-              : (!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null))
-          : (r.readinessEnabled
+        r.result ? null : (r.readinessEnabled
               ? h('div',{class:'lobby-ready-controls'},
                   h('button',{class:S.room.members.find(m=>m.id===S.me.id)?.ready?'alt':'',onclick:()=>act({t:'setReady'})},S.room.members.find(m=>m.id===S.me.id)?.ready?'✓ Ready — click to cancel':'I’m ready'),
                   isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2||r.readyCount+((S.room.members.find(m=>m.id===S.me.id)?.ready)?0:1)<r.members.length+(r.bots||[]).length,title:r.readyCount+((S.room.members.find(m=>m.id===S.me.id)?.ready)?0:1)<r.members.length+(r.bots||[]).length?'Waiting for other players to ready up':'Start the game',onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},r.readyCount+'/'+r.members.length+' players ready'))
               : (isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2,onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},'Waiting for the host to start…'))),
-        h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
+        !r.result ? h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table') : null),
       r.result&&!r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null,
       friendPicker,
       rulesPanel(r, isHost&&!r.quickMatch)),

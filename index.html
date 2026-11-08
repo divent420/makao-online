@@ -1141,15 +1141,20 @@ function roomScreen() {
   if (r.result) {
     const rows = [...(r.result.rows || [])].sort((a,b)=>Number(b.won)-Number(a.won));
     const scoreRows = h('div',{class:'results-score-list'});
+    if (!rows.length) scoreRows.append(h('p',{class:'muted'},'No score details were saved for this match.'));
     rows.forEach((p,i)=>scoreRows.append(h('div',{class:'results-score-row'+(p.won?' results-winner':'')},
       h('span',{class:'results-place'},p.won?'🏆':String(i+1).padStart(2,'0')),
       h('div',{class:'grow results-player'},h('strong',{},p.username),h('small',{},p.won?'Winner':'Finished')),
-      h('div',{class:'results-rating'},r.result.ranked?h('strong',{class:p.delta>0?'pos':p.delta<0?'neg':''},(p.delta>0?'+':'')+p.delta+' Elo'):h('strong',{},p.won?'WIN':'—'),
+      h('div',{class:'results-rating'},
+        r.result.ranked
+          ? h('strong',{class:p.delta>0?'pos':p.delta<0?'neg':''},(p.delta>0?'+':'')+p.delta+' Elo')
+          : h('strong',{},p.won?'WIN':'LOSS'),
         r.result.ranked?h('small',{},p.rating+' rating'):null))));
     const resultPanel=h('section',{class:'panel postgame-panel'},
       h('div',{class:'eyebrow'},'MATCH COMPLETE'),
       h('h1',{class:'postgame-title'},r.result.winnerId===S.me.id?'Victory!':r.result.winner+' wins'),
-      h('p',{class:'muted postgame-subtitle'},r.result.ranked?'Ranked match · rating changes applied':r.result.tournament?'Tournament match · ratings unchanged':'Casual match · ratings unchanged'),
+      h('p',{class:'muted postgame-subtitle'},r.result.saveError?'Results recovered, but detailed match statistics could not be saved.':r.result.ranked?'Ranked match · rating changes applied':r.result.tournament?'Tournament match · ratings unchanged':'Casual match · ratings unchanged'),
+      h('h3',{},'Final score'),
       scoreRows,
       h('div',{class:'postgame-actions'},
         (r.aiGame || r.members.some(m=>m.bot))
@@ -1158,20 +1163,26 @@ function roomScreen() {
         h('button',{class:'alt',onclick:()=>act({t:'leaveRoom'})},'← Back to main lobby')),
       !r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null);
     nodes.push(resultPanel);
-  } else {
-    nodes.push(h('div', { class: 'grid' },
-      h('div', { class: 'panel' },
-        h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
-        h('div', { class: 'row lobby-controls', style: 'margin-top:12px;flex-wrap:wrap' },
-          isHost?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:()=>act({t:'addBot'})},'＋ Add bot'):null,
-          isHost?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:async()=>{lobbyFriendPickerOpen=!lobbyFriendPickerOpen;if(lobbyFriendPickerOpen)await loadSocial();else render();}},'＋ Add friend'):null,
-          r.aiGame && r.result ? h('button', { onclick: () => act({ t: 'rematchAI' }) }, '🤖 Play again') : (isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…')),
-          h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
-        friendPicker,
-        rulesPanel(r, isHost)),
-      h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r))));
   }
-  if(r.result) nodes.push(h('div',{class:'panel postgame-room-info'},h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('strong',{},'Players in this results lobby'),h('span',{class:'muted'},r.members.length+' connected / joined')),members,h('div',{class:'postgame-chat'},h('h3',{},'Table chat'),chatBox(r))));
+  // Keep the regular lobby layout after a match: players, lobby controls,
+  // rule settings and chat remain in their familiar positions.
+  nodes.push(h('div', { class: 'grid' },
+    h('div', { class: 'panel' },
+      h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
+      h('div', { class: 'row lobby-controls', style: 'margin-top:12px;flex-wrap:wrap' },
+        isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:()=>act({t:'addBot'})},'＋ Add bot'):null,
+        isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:async()=>{lobbyFriendPickerOpen=!lobbyFriendPickerOpen;if(lobbyFriendPickerOpen)await loadSocial();else render();}},'＋ Add friend'):null,
+        r.result
+          ? ((r.aiGame || r.members.some(m=>m.bot))
+              ? h('button',{onclick:()=>act({t:r.aiGame?'rematchAI':'rematchBots'})},'🤖 Play again')
+              : (!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null))
+          : (isHost?h('button',{disabled:r.members.length+(r.bots||[]).length<2,onclick:()=>act({t:'start'})},'Start game'):h('span',{class:'muted'},'Waiting for the host to start…')),
+        h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
+      r.result&&!r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null,
+      friendPicker,
+      rulesPanel(r, isHost&&!r.result)),
+    h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r))));
+
   mount(h('div', { class: 'wrap' }, nodes));
 }
 function resultOverlay(res) {

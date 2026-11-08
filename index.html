@@ -1050,9 +1050,10 @@ function lobbyScreen() {
     h('button',{class:'option-play',onclick:()=>act({t:'playAI',count:Number($('aiCount').value),difficulty:$('aiDifficulty').value})},'Play →'));
   const createLobbyPanel=h('section',{class:'play-option-card create-lobby-option'},
     h('div',{class:'option-icon'},'👥'),
-    h('div',{class:'option-copy'},h('strong',{},'Create lobby'),h('p',{},'Set up a private table and invite friends')),
+    h('div',{class:'option-copy'},h('strong',{},'Create lobby'),h('p',{},'Choose who can find and join your table')),
     h('div',{class:'create-table-form'},h('input',{id:'rn',placeholder:(S.me.displayName||S.me.username)+"'s table",maxlength:30,'aria-label':'Lobby name'}),h('select',{id:'rm','aria-label':'Maximum players'},[4,3,2].map(n=>h('option',{value:n,selected:n===4},n+' players'))),
-      h('button',{class:'option-play',onclick:()=>act({t:'createRoom',name:$('rn').value.trim()||((S.me.displayName||S.me.username)+"'s table"),max:Number($('rm').value)})},'Create lobby →')));
+      h('select',{id:'rp','aria-label':'Lobby privacy'},[h('option',{value:'public',selected:true},'🌐 Public — listed in Open Tables'),h('option',{value:'invite'},'🔒 Invite-only — friends must be invited')]),
+      h('button',{class:'option-play',onclick:()=>act({t:'createRoom',name:$('rn').value.trim()||((S.me.displayName||S.me.username)+"'s table"),max:Number($('rm').value),privateOnly:$('rp').value==='invite'})},'Create lobby →')));
   const openTables=h('section',{class:'home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Open tables'),h('p',{},S.lobbies.length+' tables looking for players'))),
     list);

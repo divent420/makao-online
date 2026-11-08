@@ -147,7 +147,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, localGame: !!room.localGame, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, bots: room.bots || [], localGame: !!room.localGame, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
@@ -168,7 +168,7 @@ function roomView(r) {
   return {
     id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
-    members: r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id) }; }),
+    members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), bot: false }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true }))],
     chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
   };
 }
@@ -178,7 +178,7 @@ function stateFor(uid) {
   return {
     t: 'state', me: userView(u),
     lobbies: [...rooms.values()].map((r) => ({
-      id: r.id, name: r.name, host: uname(r.host), count: r.members.length, max: r.max, playing: !!r.game || !!r.result,
+      id: r.id, name: r.name, host: uname(r.host), count: r.members.length + (r.bots || []).length, max: r.max, playing: !!r.game || !!r.result,
       ranked: !r.tournamentId && M.isRanked(r.rules),
     })),
     room: room ? roomView(room) : null,
@@ -246,7 +246,7 @@ function restoreRooms() {
       const room = {
         id: saved.id, name: str(saved.name, 30), host: saved.members.includes(saved.host) ? saved.host : saved.members[0],
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
-        members: saved.members, game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
+        members: saved.members, bots: Array.isArray(saved.bots) ? saved.bots.filter(b => b && Number(b.id) < 0).slice(0, 4) : [], game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
@@ -433,7 +433,7 @@ function handleAct(user, m) {
       if (!room.rematchVotes.includes(uid)) room.rematchVotes.push(uid);
       const votes = room.rematchVotes.length;
       if (votes >= room.members.length) {
-        const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
+        const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; }).concat((room.bots || []).map(b=>({id:b.id,name:b.name})));
         for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
         room.game = M.newGame(list, room.rules); room.gameStartedAt = Date.now(); beginGameHistory(room); room.lastGame = null; room.result = null; room.rematchVotes = [];
         armTimer(room); persistRoom(room); pushAll(); return { ok: true, started: true };
@@ -446,7 +446,7 @@ function handleAct(user, m) {
       rooms.set(id, {
         id, name: str(m.name, 30).trim() || user.username + "'s table",
         host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)),
-        members: [uid], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
+        members: [uid], bots: [], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }, aiGame: false, aiDifficulty: 'normal',
       });
       userRoom.set(uid, id);
@@ -459,11 +459,32 @@ function handleAct(user, m) {
       if (!r) return { error: 'That table no longer exists' };
       if (r.game || r.result) return { error: 'That table has already played; create a new table or request a rematch' };
       if (r.members.some(id => Social.isBlocked(db, uid, id))) return { error: 'You cannot join a table with a player you have blocked or who blocked you' };
-      if (r.members.length >= r.max) return { error: 'That table is full' };
+      if (r.members.length + (r.bots || []).length >= r.max) return { error: 'That table is full' };
       r.members.push(uid); userRoom.set(uid, r.id);
       r.result = null; r.lastGame = null; r.rematchVotes = [];
       persistRoom(r);
       break;
+    }
+    case 'addBot': {
+      if (!room || room.host !== uid) return { error: 'Only the host can add bots' };
+      if (room.game || room.result) return { error: 'Bots can only be added in the lobby before a game' };
+      room.bots = room.bots || [];
+      if (room.members.length + room.bots.length >= room.max) return { error: 'The table is full' };
+      const names = ['Mako Bot','Card Shark','The Dealer','Lucky Jack'];
+      const used = new Set(room.bots.map(b=>b.name));
+      const name = names.find(n=>!used.has(n)) || ('Bot '+(room.bots.length+1));
+      let id; do { id = -Math.floor(Math.random()*1000000000)-1; } while (room.bots.some(b=>b.id===id));
+      room.bots.push({id,name});
+      room.chat.push({from:'Table',text:name+' joined the table',ts:Date.now()});
+      persistRoom(room); pushAll();
+      return {ok:true};
+    }
+    case 'removeBot': {
+      if (!room || room.host !== uid) return { error: 'Only the host can remove bots' };
+      if (room.game || room.result) return { error: 'Bots can only be removed in the lobby' };
+      room.bots = (room.bots || []).filter(b=>b.id !== Number(m.id));
+      persistRoom(room); pushAll();
+      return {ok:true};
     }
     case 'setRules': {
       if (!room || room.host !== uid) return { error: 'Only the host can change the rules' };
@@ -483,8 +504,8 @@ function handleAct(user, m) {
     case 'start': {
       if (!room || room.host !== uid) return { error: 'Only the host can start' };
       if (room.game) return { error: 'Already started' };
-      if (room.members.length < 2) return { error: 'Need at least 2 players' };
-      const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; });
+      if (room.members.length + (room.bots || []).length < 2) return { error: 'Need at least 2 players or bots' };
+      const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; }).concat((room.bots || []).map(b=>({id:b.id,name:b.name})));
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       room.game = M.newGame(list, room.rules);
       room.gameStartedAt = Date.now(); beginGameHistory(room);

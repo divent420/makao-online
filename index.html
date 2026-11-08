@@ -411,6 +411,27 @@ table td,table th{border-color:#ffffff18}
 @media(max-width:900px){.shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:600px){.shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.shop-option{grid-template-columns:30px minmax(0,1fr)!important}.shop-visual{width:30px;height:40px}}
 
+
+/* Standard playing-card indices: keep rank/suit in the corners, clear central pip. */
+.card{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:0!important;overflow:hidden}
+.card .s{font-size:clamp(22px,2.4vw,30px);line-height:1}
+.card .card-corner{position:absolute;display:flex;flex-direction:column;align-items:center;gap:0;font-size:12px;line-height:.9;font-weight:800}
+.card .card-corner span{font-size:10px;line-height:1}
+.card .card-corner-tl{top:5px;left:5px}
+.card .card-corner-br{right:5px;bottom:5px;transform:rotate(180deg)}
+.card .r2{display:none}
+.discard-history .card{overflow:hidden}
+@media(max-width:600px){
+ .discard-display>.card{width:42px!important;height:61px!important}
+ .discard-history{max-width:24vw!important;gap:2px!important}
+ .discard-history .card{width:13px!important;height:19px!important;font-size:6px!important}
+ .discard-history .card .s{font-size:8px!important}
+ .card .card-corner-tl{top:3px;left:3px}
+ .card .card-corner-br{right:3px;bottom:3px}
+ .card .card-corner{font-size:10px}
+ .card .card-corner span{font-size:8px}
+}
+
 </style>
 </head>
 <body>
@@ -660,8 +681,11 @@ function h(tag, attrs, ...kids) {
 }
 function cardEl(c, opts = {}) {
   const red = suit(c) === 'H' || suit(c) === 'D';
+  const value = rank(c), symbol = SYM[suit(c)];
   return h('div', { class: 'card' + (red ? ' red' : '') + (opts.cls ? ' ' + opts.cls : ''), onclick: opts.onclick },
-    h('div', {}, rank(c)), h('div', { class: 's' }, SYM[suit(c)]), h('div', { class: 'r2' }, rank(c)));
+    h('div', { class: 'card-corner card-corner-tl' }, h('b', {}, value), h('span', {}, symbol)),
+    h('div', { class: 's' }, symbol),
+    h('div', { class: 'card-corner card-corner-br' }, h('b', {}, value), h('span', {}, symbol)));
 }
 function suitEl(s) {
   const red = s === 'H' || s === 'D';
@@ -1101,7 +1125,7 @@ function gameScreen() {
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
   const discardHistory=h('div',{class:'discard-history','aria-label':'Previous discarded cards'});
-  (g.discardHistory||[]).forEach((c)=>discardHistory.append(cardEl(c)));
+  [...(g.discardHistory||[])].reverse().forEach((c)=>discardHistory.append(cardEl(c)));
   const topDiscard=cardEl(g.top);
   if(Date.now()<moveFlashUntil) topDiscard.classList.add('card-arrive');
   const discardDisplay=h('div',{class:'discard-display'},topDiscard,discardHistory);

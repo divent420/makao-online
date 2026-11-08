@@ -1574,7 +1574,9 @@ function applyShopEffects() {
     root.style.setProperty('--back-pattern',backPatterns[back]);
     root.style.setProperty('--back-mark',JSON.stringify(backMarks[back]||'M'));
   } else {
-    root.style.setProperty('--back-mark',JSON.stringify('M'));
+    // Keep the free card-back emblem instead of replacing it with the generic shop fallback.
+    const freeBackMarks={royal:'◆',ruby:'♦',forest:'♣',dark:'◈'};
+    root.style.setProperty('--back-mark',JSON.stringify(freeBackMarks[tableTheme.back]||'◆'));
   }
   const felt=effectFor('table_theme');
   const felts={sakura:['#9d526f','#512b4b'],aurora:['#176b70','#123344'],volcano:['#9b3b27','#3c171c'],amethyst:['#65448e','#241b3e'],arctic:['#397f9c','#142d4d'],copper:['#98603d','#38241f'],nightcity:['#102b58','#07182c'],sand:['#b98b55','#392b29']};
@@ -1628,6 +1630,8 @@ async function logout() {
 }
 function connect() {
   if (es) es.close();
+  // Load equipped cosmetics on login/startup, not only after the player opens Appearance.
+  if (token && !shopLoading) loadShop();
   connectionStatus='connecting';
   es = new EventSource('/events?token=' + encodeURIComponent(token));
   es.onopen = () => {

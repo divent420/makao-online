@@ -37,6 +37,7 @@
   #chat { height: 150px; overflow-y: auto; background: #0e1117; border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 8px; }
   #chat b { color: var(--gold); }
 
+.season-archive{margin-top:12px;padding-top:10px;border-top:1px solid #ffffff16;display:grid;gap:7px}.season-archive>strong{font-size:10px;letter-spacing:.1em;color:#9aa4b5;text-transform:uppercase}.season-archive .muted{font-size:11px;line-height:1.4}
 .season-player-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 12px;padding:10px 12px;background:#101923;border:1px solid #ffffff12;border-radius:10px;font-size:12px;color:#aeb9c9}.season-player-summary strong{color:#f3d77b;font-size:14px}
   /* table */
   .table { background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt2) 100%); border-radius: 16px; padding: 14px; min-height: 520px; display: flex; flex-direction: column; gap: 14px; border: 1px solid #0a2c1c; }
@@ -932,7 +933,8 @@ function lobbyScreen() {
   const rankPanel=h('section',{class:'home-section leaderboard-home'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Ranked season'),h('p',{},season?season.title+' · '+season.daysRemaining+' days remaining':'Loading current season…')),h('span',{class:'rank-emblem'},'🏆')),
     h('div',{class:'season-player-summary'},h('strong',{},(season?.tier?.icon||'🥉')+' '+(season?.tier?.name||'Bronze')),h('span',{},(season?.rating??1000)+' rating'),h('span',{},season?.rank?'#'+season.rank:'Unranked')),
-    tbl,h('div',{class:'your-record'},h('span',{},'SEASON RECORD'),h('strong',{},(season?.wins??0)+' wins · '+(season?.games??0)+' games')));
+    tbl,h('div',{class:'your-record'},h('span',{},'SEASON RECORD'),h('strong',{},(season?.wins??0)+' wins · '+(season?.games??0)+' games')),
+    seasonData?.previous?.length?h('div',{class:'season-archive'},h('strong',{},'Past podiums'),...seasonData.previous.slice(0,2).map(p=>h('div',{class:'muted'},p.title+' · '+(p.podium||[]).map(w=>w.place+'. '+w.displayName+' ('+w.rewardCoins+' coins)').join('  / ')))):null);
   const welcome=h('div',{class:'welcome-row'},h('div',{},h('div',{class:'eyebrow'},'WELCOME BACK'),h('h1',{},'Ready to play?'),h('p',{},'Your next win is one game away.')),h('div',{class:'level-pill'},h('span',{},'♛'),h('strong',{},'Player'),h('small',{},'Level up as you play')));
   mount(h('div',{class:'wrap app-shell'},topBar(),welcome,
     h('div',{class:'home-layout'},

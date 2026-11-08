@@ -183,7 +183,7 @@ function stateFor(uid) {
     })),
     room: room ? roomView(room) : null,
     matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
-    game: room && (room.game || (room.result && room.lastGame)) ? M.view(room.game || room.lastGame, room.localGame && room.game ? room.game.players[room.game.turn]?.id : uid) : null,
+    game: room && room.game ? M.view(room.game, room.localGame ? room.game.players[room.game.turn]?.id : uid) : null,
   };
 }
 function pushAll() {

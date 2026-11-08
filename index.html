@@ -691,7 +691,7 @@ async function loadSeason() {
   seasonLoading=true;
   try { seasonData=await api('/api/seasons'); }
   catch (_) { seasonData=null; }
-  finally { seasonLoading=false; if(S&&!S.room&&activeScreen==='home')render(); }
+  finally { seasonLoading=false; if(seasonData&&S&&!S.room&&activeScreen==='home')render(); }
 }
 
 // ---------- rendering helpers ----------

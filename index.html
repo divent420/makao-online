@@ -395,6 +395,14 @@ table td,table th{border-color:#ffffff18}
 @media(prefers-reduced-motion:reduce){.card-arrive,.game-status-banner .is-waiting,.game-status-banner .is-waiting:before,.game-timer.timer-critical{animation:none!important}}
 
 
+/* Adjustable card corners: the shop slider controls every playing-card surface. */
+.card{border-radius:var(--card-radius,0px)!important}
+.shop-visual-card{border-radius:0!important}
+.card-shape-control input[type=range]{cursor:pointer}
+.card-shape-control h2{font-size:15px}
+.shop-option-button{border-radius:4px!important;min-height:23px;padding:3px 8px;font-size:10px}
+.shop-option-button:disabled{opacity:.85;cursor:default}
+
 /* Sharp playing cards everywhere; compact, denser appearance catalog. */
 .card,.shop-visual-card{border-radius:0!important}
 .shop-option{grid-template-columns:34px minmax(0,1fr)!important;gap:6px!important;padding:6px!important;min-height:58px!important}
@@ -579,7 +587,7 @@ function applyTheme() {
   const root=document.documentElement;
   const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
   const backs={royal:'repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',ruby:'repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',forest:'repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',dark:'repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)'};
-  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); root.style.setProperty('--card-radius','0px');
+  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); const cardRadius=Math.max(0,Math.min(16,Number(tableTheme.cardRadius)||0)); root.style.setProperty('--card-radius',cardRadius+'px');
   applyShopEffects();
 }
 function applyShopEffects() {
@@ -926,6 +934,20 @@ function shopScreen() {
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
   const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
   const content=[wallet,h('section',{class:'panel shop-section shop-preview-section'},h('h2',{},'Table preview'),preview)];
+  const cardRadius=Math.max(0,Math.min(16,Number(tableTheme.cardRadius)||0));
+  const shapeControl=h('section',{class:'panel shop-section card-shape-control'},
+    h('div',{class:'row',style:'align-items:center;justify-content:space-between;gap:12px'},
+      h('h2',{style:'margin:0'},'Card shape'),
+      h('strong',{id:'card-radius-value',style:'color:var(--gold);min-width:42px;text-align:right'},cardRadius+'px')),
+    h('input',{type:'range',min:0,max:16,step:1,value:cardRadius,'aria-label':'Card corner roundness',style:'width:100%;margin:12px 0 4px;accent-color:var(--gold)',oninput:e=>{
+      const value=Math.max(0,Math.min(16,Number(e.target.value)||0));
+      tableTheme.cardRadius=value;
+      document.documentElement.style.setProperty('--card-radius',value+'px');
+      localStorage.setItem('mk_theme',JSON.stringify(tableTheme));
+      const output=document.getElementById('card-radius-value');if(output)output.textContent=value+'px';
+    }}),
+    h('div',{class:'row muted',style:'justify-content:space-between;font-size:10px'},h('span',{},'Sharp'),h('span',{},'Rounded')));
+  content.push(shapeControl);
   const cardBacks=[
     {id:'free-back-royal',name:'Royal blue',icon:'🔷',free:true,selected:tableTheme.back==='royal',style:'background:repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',apply:()=>{tableTheme.back='royal';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
     {id:'free-back-ruby',name:'Ruby',icon:'♦',free:true,selected:tableTheme.back==='ruby',style:'background:repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',apply:()=>{tableTheme.back='ruby';freeAppearance.card_back=true;saveFreeAppearance();localStorage.setItem('mk_theme',JSON.stringify(tableTheme));applyTheme();render();}},
@@ -955,10 +977,10 @@ function shopScreen() {
       if(r.error)return toast(r.error);
       shopData=r.shop;freeAppearance[category]=false;saveFreeAppearance();applyShopEffects();toast(item.owned?'Cosmetic equipped':'Cosmetic purchased and equipped');render();
     };
-    const label=item.free?(selected?'Selected':'Use'):item.equipped&&freeAppearance[category]===false?'Equipped':item.owned?'Equip':String(item.price)+' coins';
+    const label=selected?'Selected':(item.free||item.owned)?'Use':String(item.price)+' coins';
     return h('article',{class:'shop-item appearance-option shop-option'+(selected?' selected':'')},
       visual,h('div',{class:'shop-option-info'},h('strong',{},item.name),h('p',{},item.free?'Free style':item.description),
-      h('button',{class:selected?'alt':'',disabled:selected,onclick:action},label)));
+      h('button',{class:'shop-option-button',disabled:selected,onclick:action},label)));
   }
   const sections=[
     {title:'Card backs',category:'card_back',items:[...cardBacks,...shopData.items.filter(i=>i.category==='card_back')]},

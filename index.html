@@ -1152,9 +1152,11 @@ function roomScreen() {
       h('p',{class:'muted postgame-subtitle'},r.result.ranked?'Ranked match · rating changes applied':r.result.tournament?'Tournament match · ratings unchanged':'Casual match · ratings unchanged'),
       scoreRows,
       h('div',{class:'postgame-actions'},
-        r.aiGame?h('button',{onclick:()=>act({t:'rematchAI'})},'🤖 Play again'):(!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null),
+        (r.aiGame || r.members.some(m=>m.bot))
+          ? h('button',{onclick:()=>act({t:r.aiGame?'rematchAI':'rematchBots'})},'🤖 Play again')
+          : (!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null),
         h('button',{class:'alt',onclick:()=>act({t:'leaveRoom'})},'← Back to main lobby')),
-      !r.aiGame&&!r.tournament?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null);
+      !r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null);
     nodes.push(resultPanel);
   } else {
     nodes.push(h('div', { class: 'grid' },
@@ -1373,6 +1375,8 @@ function render() {
   if (activeScreen === 'social') return socialScreen();
   if (activeScreen === 'admin') return adminScreen();
   if (activeScreen === 'localLobby') return localLobbyScreen();
+  // Always show the persistent results lobby before considering any stale game view.
+  if (S.room?.result) return roomScreen();
   if (S.game) return gameScreen();
   if (S.room) return roomScreen();
   lobbyScreen();

@@ -587,8 +587,20 @@ function handleAct(user, m) {
       if (room.game) return { error: 'Already started' };
       if (room.members.length + (room.bots || []).length < 2) return { error: 'Need at least 2 players or bots' };
       if (!room.quickMatch && !room.aiGame && !room.localGame && !room.tournamentId) {
-        const ready = new Set(room.readyPlayers || []);
-        if (room.members.some(id => !ready.has(id))) return { error: 'Everyone must be ready before the host can start' };
+        room.readyPlayers = Array.isArray(room.readyPlayers) ? room.readyPlayers : [];
+        // Pressing Start also readies the host; other humans must ready first.
+        if (!room.readyPlayers.includes(uid)) {
+          room.readyPlayers.push(uid);
+          room.chat.push({from:'Table',text:uname(uid)+' is ready',ts:Date.now()});
+          if (room.chat.length > 100) room.chat.shift();
+        }
+        const ready = new Set(room.readyPlayers);
+        const missing = room.members.filter(id => id !== uid && !ready.has(id));
+        if (missing.length) {
+          persistRoom(room);
+          pushAll();
+          return { error: 'Waiting for the other players to ready up' };
+        }
       }
       const list = room.members.map((id) => { const u=q.byId.get(id); return { id, name:u.display_name || u.username }; }).concat((room.bots || []).map(b=>({id:b.id,name:b.name})));
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }

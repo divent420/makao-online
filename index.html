@@ -1397,6 +1397,9 @@ body{background:radial-gradient(ellipse at 50% -18%,#3c1722 0,transparent 42%),#
 .shop-visual-felt .shop-visual-mark{font-size:20px!important;color:#fff!important}
 .shop-visual-frame .shop-visual-mark{font-size:21px!important}
 
+
+/* Keep equipped felt themes consistent on the live table, not just the shop preview. */
+.game-table-felt{background:var(--table-pattern)!important;}
 </style>
 </head>
 <body>
@@ -2384,7 +2387,3 @@ loadSeason(); setInterval(() => { if (token && S && !S.room) { if(activeScreen==
 </script>
 </body>
 </html>
-
-
-/* Keep equipped felt themes consistent on the live table, not just the shop preview. */
-.game-table-felt{background:var(--table-pattern)!important;}

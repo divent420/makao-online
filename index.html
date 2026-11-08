@@ -1445,6 +1445,10 @@ let socialLoading = false;
 let socialError = '';
 let lobbyFriendPickerOpen = false;
 let tournamentData = null;
+let adminOverview = null;
+let adminActiveRooms = [];
+let adminPlayerSearch = '';
+let adminTab = 'overview';
 let adminReports = [];
 let adminUsers = [];
 let adminUsersLoading = false;
@@ -2328,6 +2332,15 @@ function tick() {
 }
 setInterval(tick, 500);
 
+async function loadAdminOverview() {
+  if (!S?.me?.isAdmin) return;
+  try {
+    const [overview, active] = await Promise.all([api('/api/admin/overview'),api('/api/admin/active-rooms')]);
+    if (!overview.error) adminOverview=overview; else toast(overview.error);
+    if (!active.error) adminActiveRooms=active.rooms||[]; else toast(active.error);
+  } catch (_) { toast('Could not load admin overview.'); }
+  if(activeScreen==='admin') render();
+}
 async function loadAdminReports() {
   if (!S?.me?.isAdmin) return;
   adminLoading = true; render();
@@ -2343,29 +2356,49 @@ async function loadAdminUsers() {
   if(r.error) toast(r.error); else adminUsers=r.users||[];
   if(activeScreen==='admin') render();
 }
-function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminReports(); loadAdminUsers(); render(); }
+function showAdmin() { if (!S?.me?.isAdmin) return; activeScreen = 'admin'; loadAdminOverview(); loadAdminReports(); loadAdminUsers(); render(); }
 function adminScreen() {
-  const filters = h('div',{class:'row',style:'margin-bottom:14px'},['open','reviewing','resolved','dismissed','all'].map(status=>h('button',{class:adminStatus===status?'':'alt',onclick:()=>{adminStatus=status;loadAdminReports();}},status[0].toUpperCase()+status.slice(1))));
-  const panel = h('div',{class:'panel admin-reports-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
-  if (adminLoading) panel.append(h('p',{class:'muted'},'Loading reports…'));
-  else if (!adminReports.length) panel.append(h('p',{class:'muted'},'No reports in this queue.'));
-  adminReports.forEach(report=>{
-    const actions=h('div',{class:'row',style:'margin-top:8px'});
-    if (report.status==='open') actions.append(h('button',{class:'alt',onclick:async()=>{const r=await api('/api/admin/reports/update',{reportId:report.id,status:'reviewing'});if(r.error)return toast(r.error);loadAdminReports();}},'Mark reviewing'));
-    if (!['resolved','dismissed'].includes(report.status)) {
-      actions.append(h('button',{onclick:async()=>{const note=prompt('Moderator note (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'resolved',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Resolve'));
-      actions.append(h('button',{class:'warn',onclick:async()=>{const note=prompt('Reason for dismissal (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'dismissed',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Dismiss'));
-    }
-    panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'#'+report.id+' · '+report.reason.replaceAll('_',' ')),h('span',{class:'muted'},new Date(report.created_at).toLocaleString())),h('div',{},'Reported: @'+report.reported_username+' · By: @'+report.reporter_username),report.details?h('p',{},report.details):null,h('div',{class:'muted'},'Status: '+report.status+(report.moderator_username?' · Reviewed by @'+report.moderator_username:'')),report.resolution?h('div',{class:'muted'},'Note: '+report.resolution):null,actions));
-  });
-  const usersPanel=h('div',{class:'panel admin-players-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Players'),h('button',{class:'alt',onclick:loadAdminUsers},'↻ Refresh')));
-  if(adminUsersLoading) usersPanel.append(h('p',{class:'muted'},'Loading players…'));
-  else if(!adminUsers.length) usersPanel.append(h('p',{class:'muted'},'No players found.'));
-  adminUsers.forEach(player=>{
-    const grant=h('button',{class:'alt',onclick:async()=>{const raw=prompt('How many coins to grant? (1–10,000)','100');if(raw===null)return;const amount=Number(raw);if(!Number.isInteger(amount)||amount<1||amount>10000)return toast('Enter a whole number from 1 to 10,000');const reason=prompt('Reason for coin grant (optional):','Admin reward')||'';const r=await api('/api/admin/coins',{userId:player.id,amount,reason});if(r.error)return toast(r.error);toast('Granted '+amount+' coins to @'+player.username);loadAdminUsers();if(player.id===S.me.id)loadShop();}},'＋ Give coins');
-    usersPanel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},(player.is_admin?'🛡 ':'')+'@'+player.username),h('strong',{},'🪙 '+player.coins)),h('div',{class:'muted'},'Rating '+player.rating+' · '+player.games+' games · '+player.wins+' wins · Joined '+new Date(player.created).toLocaleDateString()),grant));
-  });
-  return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin panel'),h('p',{class:'muted'},'Manage player reports and player coin balances.'),usersPanel,panel,bottomNav('admin')));
+  const o=adminOverview||{};
+  const tabs=[['overview','Overview'],['players','Players'],['reports','Reports'],['games','Live games']];
+  const nav=h('div',{class:'row',style:'gap:7px;flex-wrap:wrap;margin:14px 0'},tabs.map(([id,label])=>h('button',{class:adminTab===id?'':'alt',onclick:()=>{adminTab=id;render();}},label)));
+  const body=h('div',{});
+  if(adminTab==='overview'){
+    const stats=[['Players',o.players],['Online now',o.onlinePlayers],['New this week',o.newPlayers],['Games played',o.gamesPlayed],['Active lobbies',o.activeLobbies],['Games running',o.activeGames],['Open reports',o.openReports]];
+    const grid=h('div',{class:'settings-grid',style:'grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:12px 0 18px'});
+    stats.forEach(([label,value])=>grid.append(h('div',{class:'panel',style:'padding:15px'},h('div',{class:'muted',style:'font-size:12px'},label),h('div',{style:'font-size:27px;font-weight:850;margin-top:5px'},String(value??'—')))));
+    body.append(grid,h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h3',{},'Admin shortcuts'),h('button',{class:'alt',onclick:()=>{loadAdminOverview();loadAdminUsers();loadAdminReports();}},'↻ Refresh')),h('div',{class:'row',style:'flex-wrap:wrap'},h('button',{onclick:()=>{adminTab='players';render();}},'Manage players'),h('button',{class:'alt',onclick:()=>{adminTab='reports';render();}},'Review reports'),h('button',{class:'alt',onclick:()=>{adminTab='games';render();}},'Live games'))));
+  }else if(adminTab==='players'){
+    const panel=h('div',{class:'panel admin-players-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Players'),h('button',{class:'alt',onclick:loadAdminUsers},'↻ Refresh')));
+    panel.append(h('input',{placeholder:'Search username or display name…',value:adminPlayerSearch,oninput:e=>{adminPlayerSearch=e.target.value;render();},style:'width:100%;margin:10px 0'}));
+    const found=adminUsers.filter(p=>(p.username+' '+(p.display_name||'')).toLowerCase().includes(adminPlayerSearch.toLowerCase()));
+    if(adminUsersLoading)panel.append(h('p',{class:'muted'},'Loading players…'));
+    else if(!found.length)panel.append(h('p',{class:'muted'},adminUsers.length?'No matching players.':'No players found.'));
+    found.forEach(player=>{
+      const grant=h('button',{class:'alt',onclick:async()=>{const raw=prompt('How many coins to grant? (1–10,000)','100');if(raw===null)return;const amount=Number(raw);if(!Number.isInteger(amount)||amount<1||amount>10000)return toast('Enter a whole number from 1 to 10,000');const reason=prompt('Reason (optional):','Admin reward')||'';const r=await api('/api/admin/coins',{userId:player.id,amount,reason});if(r.error)return toast(r.error);toast('Granted '+amount+' coins to @'+player.username);loadAdminUsers();if(player.id===S.me.id)loadShop();}},'＋ Give coins');
+      panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},(player.is_admin?'🛡 ':'')+'@'+player.username),h('strong',{},'🪙 '+player.coins)),h('div',{class:'muted'},'Rating '+player.rating+' · '+player.games+' games · '+player.wins+' wins · Joined '+new Date(player.created).toLocaleDateString()),grant));
+    });
+    body.append(panel);
+  }else if(adminTab==='reports'){
+    const filters=h('div',{class:'row',style:'margin-bottom:14px;flex-wrap:wrap'},['open','reviewing','resolved','dismissed','all'].map(status=>h('button',{class:adminStatus===status?'':'alt',onclick:()=>{adminStatus=status;loadAdminReports();}},status[0].toUpperCase()+status.slice(1))));
+    const panel=h('div',{class:'panel admin-reports-panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Player reports'),h('button',{class:'alt',onclick:loadAdminReports},'↻ Refresh')),filters);
+    if(adminLoading)panel.append(h('p',{class:'muted'},'Loading reports…'));else if(!adminReports.length)panel.append(h('p',{class:'muted'},'No reports in this queue.'));
+    adminReports.forEach(report=>{
+      const actions=h('div',{class:'row',style:'margin-top:8px;flex-wrap:wrap'});
+      if(report.status==='open')actions.append(h('button',{class:'alt',onclick:async()=>{const r=await api('/api/admin/reports/update',{reportId:report.id,status:'reviewing'});if(r.error)return toast(r.error);loadAdminReports();}},'Mark reviewing'));
+      if(!['resolved','dismissed'].includes(report.status)){
+        actions.append(h('button',{onclick:async()=>{const note=prompt('Moderator note (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'resolved',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Resolve'));
+        actions.append(h('button',{class:'warn',onclick:async()=>{const note=prompt('Reason for dismissal (optional):','');if(note===null)return;const r=await api('/api/admin/reports/update',{reportId:report.id,status:'dismissed',resolution:note});if(r.error)return toast(r.error);loadAdminReports();}},'Dismiss'));
+      }
+      panel.append(h('div',{style:'padding:12px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},'#'+report.id+' · '+report.reason.replaceAll('_',' ')),h('span',{class:'muted'},new Date(report.created_at).toLocaleString())),h('div',{},'Reported: @'+report.reported_username+' · By: @'+report.reporter_username),report.details?h('p',{},report.details):null,h('div',{class:'muted'},'Status: '+report.status+(report.moderator_username?' · Reviewed by @'+report.moderator_username:'')),report.resolution?h('div',{class:'muted'},'Note: '+report.resolution:null),actions));
+    });
+    body.append(panel);
+  }else{
+    const panel=h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Live lobbies & games'),h('button',{class:'alt',onclick:loadAdminOverview},'↻ Refresh')));
+    if(!adminActiveRooms.length)panel.append(h('p',{class:'muted'},'No active lobbies right now.'));
+    adminActiveRooms.forEach(room=>panel.append(h('div',{style:'padding:13px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},room.name),h('span',{class:'muted'},room.inGame?'Game in progress':'Lobby')),h('div',{class:'muted'},'Room '+room.id+' · '+room.players.length+' players'),h('div',{class:'row',style:'flex-wrap:wrap;gap:6px'},room.players.map(player=>h('span',{class:'chip'},(player.connected?'● ':'○ ')+player.username)))));
+    body.append(panel);
+  }
+  return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin dashboard'),h('p',{class:'muted'},'Game operations, players and moderation.'),nav,body,bottomNav('admin')));
 }
 
 function localLobbyScreen(){

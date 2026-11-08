@@ -457,6 +457,7 @@ table td,table th{border-color:#ffffff18}
  .card .card-corner span{font-size:8px}
 }
 
+.connection-banner{position:fixed;z-index:9999;top:12px;left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 28px));display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px solid #d6a34a66;border-radius:10px;background:#17202df2;color:#f4e7c8;box-shadow:0 10px 32px #0009;font-size:13px;backdrop-filter:blur(12px)}.connection-banner .connection-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#e5a83d;box-shadow:0 0 0 4px #e5a83d22;animation:connectionPulse 1.2s infinite}.connection-banner.restored{border-color:#43c78a66;color:#d8ffea}.connection-banner.restored .connection-dot{background:#43c78a;box-shadow:0 0 0 4px #43c78a22;animation:none}@keyframes connectionPulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.connection-banner .connection-dot{animation:none}}
 </style>
 </head>
 <body>
@@ -471,6 +472,7 @@ const app = $('app');
 let token = localStorage.getItem('mk_token');
 let S = null;               // latest server state
 let es = null;
+let connectionStatus = 'connecting', hasConnected = false, reconnectNoticeTimer = null;
 let seasonData = null, seasonLoading = false;
 let gameHistoryData = null, gameHistoryLoading = false, gameHistoryLoadedAt = 0;
 let replayData = null, replayStep = 0, replayTimer = null;
@@ -660,7 +662,18 @@ async function logout() {
 }
 function connect() {
   if (es) es.close();
+  connectionStatus='connecting';
   es = new EventSource('/events?token=' + encodeURIComponent(token));
+  es.onopen = () => {
+    const wasDisconnected=hasConnected && connectionStatus==='reconnecting';
+    hasConnected=true;
+    if (wasDisconnected) {
+      connectionStatus='restored';
+      if(reconnectNoticeTimer)clearTimeout(reconnectNoticeTimer);
+      if(S)render();
+      reconnectNoticeTimer=setTimeout(()=>{connectionStatus='connected';if(S)render();},3500);
+    } else { connectionStatus='connected'; }
+  };
   es.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.t === 'state') {
@@ -682,8 +695,12 @@ function connect() {
     }
   };
   es.onerror = async () => {
-    const r = await fetch('/api/me', { headers: { 'x-token': token || '' } });
-    if (r.status === 401) { localStorage.removeItem('mk_token'); token = null; S = null; es.close(); render(); }
+    if (hasConnected && connectionStatus!=='reconnecting') { connectionStatus='reconnecting'; if(reconnectNoticeTimer)clearTimeout(reconnectNoticeTimer); if(S)render(); }
+    if (es && es.readyState===EventSource.CLOSED) {
+      try { const r = await fetch('/api/me', { headers: { 'x-token': token || '' } });
+        if (r.status === 401) { localStorage.removeItem('mk_token'); token = null; S = null; connectionStatus='connected'; es.close(); render(); }
+      } catch (_) { /* keep the reconnect banner visible while offline */ }
+    }
   };
 }
 async function loadSeason() {
@@ -723,6 +740,10 @@ function mount(node) {
   const a = document.activeElement;
   const keep = a && a.id ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   app.replaceChildren(node);
+  if (connectionStatus === 'reconnecting' || connectionStatus === 'restored') {
+    const restored=connectionStatus==='restored';
+    app.append(h('div',{class:'connection-banner'+(restored?' restored':''),role:'status','aria-live':'polite'},h('span',{class:'connection-dot'}),h('span',{},restored?'Connection restored · Your game is back.':'Connection lost · Reconnecting… Your game is being kept safe.')));
+  }
   if (keep) {
     const el = $(keep.id);
     if (el) { el.value = keep.value; el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (_) {} }

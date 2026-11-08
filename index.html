@@ -458,7 +458,7 @@ table td,table th{border-color:#ffffff18}
 }
 
 .connection-banner{position:fixed;z-index:9999;top:12px;left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 28px));display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px solid #d6a34a66;border-radius:10px;background:#17202df2;color:#f4e7c8;box-shadow:0 10px 32px #0009;font-size:13px;backdrop-filter:blur(12px)}.connection-banner .connection-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#e5a83d;box-shadow:0 0 0 4px #e5a83d22;animation:connectionPulse 1.2s infinite}.connection-banner.restored{border-color:#43c78a66;color:#d8ffea}.connection-banner.restored .connection-dot{background:#43c78a;box-shadow:0 0 0 4px #43c78a22;animation:none}@keyframes connectionPulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.connection-banner .connection-dot{animation:none}}
-\n.player-disconnect-notice{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 13px;border:1px solid #d5a64b55;border-left:3px solid #d5a64b;background:linear-gradient(100deg,#172c22f2,#13251df2);color:#d9e5d8;border-radius:9px;box-shadow:0 4px 14px #0002;font-size:12px;line-height:1.35}.disconnect-status-dot{display:block;flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#e3ad51;box-shadow:0 0 0 4px #e3ad511c;animation:disconnectPulse 1.8s ease-in-out infinite}.disconnect-notice-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0}.disconnect-notice-copy strong{font-size:12px;font-weight:700;color:#f0cf8c}.disconnect-notice-copy span{min-width:0;overflow-wrap:anywhere;color:#b8c9ba;font-size:11px}@keyframes disconnectPulse{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.disconnect-status-dot{animation:none}}@media(max-width:600px){.player-disconnect-notice{gap:9px;margin:0 0 8px;padding:9px 11px;border-radius:8px}.disconnect-notice-copy{flex-direction:column;align-items:flex-start;gap:2px}.disconnect-notice-copy strong{font-size:11px}.disconnect-notice-copy span{font-size:11px}}\n</style>
+\n.player-disconnect-notice{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 13px;border:1px solid #d5a64b55;border-left:3px solid #d5a64b;background:linear-gradient(100deg,#172c22f2,#13251df2);color:#d9e5d8;border-radius:9px;box-shadow:0 4px 14px #0002;font-size:12px;line-height:1.35}.disconnect-status-dot{display:block;flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#e3ad51;box-shadow:0 0 0 4px #e3ad511c;animation:disconnectPulse 1.8s ease-in-out infinite}.disconnect-notice-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0}.disconnect-notice-copy strong{font-size:12px;font-weight:700;color:#f0cf8c}.disconnect-notice-copy span{min-width:0;overflow-wrap:anywhere;color:#b8c9ba;font-size:11px}@keyframes disconnectPulse{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.disconnect-status-dot{animation:none}}@media(max-width:600px){.player-disconnect-notice{gap:9px;margin:0 0 8px;padding:9px 11px;border-radius:8px}.disconnect-notice-copy{flex-direction:column;align-items:flex-start;gap:2px}.disconnect-notice-copy strong{font-size:11px}.disconnect-notice-copy span{font-size:11px}}\n\n.postgame-panel{max-width:720px;margin:26px auto 16px;padding:clamp(18px,4vw,30px);background:linear-gradient(145deg,#172b20,#102219);border:1px solid #c5a45b55;box-shadow:0 18px 50px #0005}.postgame-title{font-size:clamp(27px,6vw,38px);margin:7px 0 4px;color:#f3dfaa}.postgame-subtitle{margin:0 0 20px}.results-score-list{display:flex;flex-direction:column;gap:8px}.results-score-row{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid #ffffff12;border-radius:10px;background:#ffffff06;min-width:0}.results-score-row.results-winner{border-color:#d5b15a88;background:linear-gradient(90deg,#c69b351b,#ffffff05)}.results-place{width:27px;flex:0 0 27px;text-align:center;color:#d7c18a;font-weight:800}.results-player{display:flex;flex-direction:column;gap:3px;min-width:0}.results-player strong{overflow-wrap:anywhere;color:#f0ead7}.results-player small,.results-rating small{font-size:10px;color:#9eb2a1}.results-rating{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}.results-rating strong{font-size:13px;color:#d9e7d8}.postgame-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}.postgame-actions button{flex:1 1 180px}.postgame-votes{margin-top:12px;font-size:12px}.postgame-room-info{max-width:720px;margin:0 auto 25px}.postgame-chat{margin-top:18px;padding-top:14px;border-top:1px solid #ffffff16}.postgame-chat h3{margin:0 0 10px;font-size:14px}@media(max-width:560px){.postgame-panel{margin:14px 0;padding:17px}.results-score-row{gap:8px;padding:10px}.postgame-actions{flex-direction:column}.postgame-actions button{width:100%;flex-basis:auto}.postgame-room-info{margin:0 0 18px}}\n</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1113,18 +1113,38 @@ function roomScreen() {
   r.members.forEach((m) => members.append(h('div', {},
     h('div', { class: 'grow' }, h('button', { class:'alt player-link', style:'padding:4px 7px;background:transparent;box-shadow:none', onclick:()=>openPlayerProfile(m.id) }, (m.avatar||'🂡')+' '+(m.displayName||m.username) + (m.id === r.host ? ' 👑' : '') + (m.id === S.me.id ? ' (you)' : '')),
       h('span', { class: 'muted' }, ' · ' + m.rating + (m.online ? '' : ' · offline'))))));
-  const nodes = [topBar(), h('div', { class: 'grid' },
-    h('div', { class: 'panel' },
-      h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
-      h('div', { class: 'row', style: 'margin-top:12px' },
-        r.aiGame && r.result ? h('button', { onclick: () => act({ t: 'rematchAI' }) }, '🤖 Play again') : (isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…')),
-        h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
-      rulesPanel(r, isHost)),
-    h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r)))];
-  if (r.result && r.result.id > dismissed) nodes.push(resultOverlay(r.result));
+  const nodes = [topBar()];
+  if (r.result) {
+    const rows = [...(r.result.rows || [])].sort((a,b)=>Number(b.won)-Number(a.won));
+    const scoreRows = h('div',{class:'results-score-list'});
+    rows.forEach((p,i)=>scoreRows.append(h('div',{class:'results-score-row'+(p.won?' results-winner':'')},
+      h('span',{class:'results-place'},p.won?'🏆':String(i+1).padStart(2,'0')),
+      h('div',{class:'grow results-player'},h('strong',{},p.username),h('small',{},p.won?'Winner':'Finished')),
+      h('div',{class:'results-rating'},r.result.ranked?h('strong',{class:p.delta>0?'pos':p.delta<0?'neg':''},(p.delta>0?'+':'')+p.delta+' Elo'):h('strong',{},p.won?'WIN':'—'),
+        r.result.ranked?h('small',{},p.rating+' rating'):null))));
+    const resultPanel=h('section',{class:'panel postgame-panel'},
+      h('div',{class:'eyebrow'},'MATCH COMPLETE'),
+      h('h1',{class:'postgame-title'},r.result.winnerId===S.me.id?'Victory!':r.result.winner+' wins'),
+      h('p',{class:'muted postgame-subtitle'},r.result.ranked?'Ranked match · rating changes applied':r.result.tournament?'Tournament match · ratings unchanged':'Casual match · ratings unchanged'),
+      scoreRows,
+      h('div',{class:'postgame-actions'},
+        r.aiGame?h('button',{onclick:()=>act({t:'rematchAI'})},'🤖 Play again'):(!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null),
+        h('button',{class:'alt',onclick:()=>act({t:'leaveRoom'})},'← Back to main lobby')),
+      !r.aiGame&&!r.tournament?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null);
+    nodes.push(resultPanel);
+  } else {
+    nodes.push(h('div', { class: 'grid' },
+      h('div', { class: 'panel' },
+        h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
+        h('div', { class: 'row', style: 'margin-top:12px' },
+          r.aiGame && r.result ? h('button', { onclick: () => act({ t: 'rematchAI' }) }, '🤖 Play again') : (isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…')),
+          h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
+        rulesPanel(r, isHost)),
+      h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r))));
+  }
+  if(r.result) nodes.push(h('div',{class:'panel postgame-room-info'},h('div',{class:'row',style:'justify-content:space-between;align-items:center'},h('strong',{},'Players in this results lobby'),h('span',{class:'muted'},r.members.length+' connected / joined')),members,h('div',{class:'postgame-chat'},h('h3',{},'Table chat'),chatBox(r))));
   mount(h('div', { class: 'wrap' }, nodes));
 }
-
 function resultOverlay(res) {
   const tbl = h('table', {});
   res.rows.forEach((x) => tbl.append(h('tr', {},

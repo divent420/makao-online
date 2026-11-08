@@ -1043,8 +1043,8 @@ th{color:#8f9cad!important;text-transform:uppercase;letter-spacing:.1em;font-siz
   background:linear-gradient(135deg,#ed334f,#9f1d38)!important;border-color:#ff6579!important;color:#fff!important;
 }
 .shop-visual-card{border-radius:7px!important;box-shadow:0 8px 20px #0008}
-.shop-visual-felt{background:radial-gradient(ellipse,#2b3542,#121922)!important;border:1px solid #536174!important}
-.shop-visual-frame{border-color:#64758b!important}
+.shop-visual-felt{background:radial-gradient(ellipse,#2b3542,#121922);border:1px solid #536174!important}
+.shop-visual-frame{border-color:#64758b}
 .shop-preview-section .shop-preview{box-shadow:inset 0 0 30px #0008}
 .swatch.active{outline:2px solid #ff5268!important;outline-offset:2px}
 .shop-wallet .muted{color:#aab6c5!important}
@@ -1324,6 +1324,59 @@ body{background:radial-gradient(ellipse at 50% -18%,#3c1722 0,transparent 42%),#
   background:#0e141d!important;
   border-color:#3d495a!important;
   color:#f1f4f8!important;
+}
+
+
+/* Appearance preview fixes: let equipped theme variables and item swatches show. */
+.shop-preview{
+  min-height:190px!important;
+  background:var(--table-pattern)!important;
+  border:1px solid #536174!important;
+  box-shadow:inset 0 0 30px #0008!important;
+}
+.shop-preview .preview-play-area{
+  background:transparent!important;
+  border:0!important;
+  min-height:112px;
+}
+.shop-preview .card.back{
+  background:var(--back-pattern)!important;
+  border:2px solid #e6dce0!important;
+}
+.shop-visual-felt{
+  background:radial-gradient(ellipse at center,#263342,#111923);
+}
+.shop-visual-frame{
+  border-color:#64758b;
+}
+.shop-visual-card,.shop-visual-felt,.shop-visual-frame{
+  position:relative;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.shop-visual-card:after{
+  content:"";
+  position:absolute;
+  inset:5px;
+  border:1px solid #ffffff70;
+  border-radius:3px;
+  pointer-events:none;
+}
+.shop-visual-felt:after{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:1px solid #ffffff55;
+  border-radius:3px;
+  pointer-events:none;
+}
+.shop-visual-frame span{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  font-size:20px;
+  text-shadow:0 1px 5px #000b;
 }
 
 </style>

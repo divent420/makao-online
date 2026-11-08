@@ -295,7 +295,7 @@ function view(st, pid) {
     })),
     hand, myTurn, winner: st.winner,
     legal: myTurn ? hand.filter((c) => legalFirst(st, c) && (!st.drew || c === st.drew)) : [],
-    top: st.discard[st.discard.length - 1], suit: st.suit,
+    top: st.discard[st.discard.length - 1], discardHistory: st.discard.slice(-6, -1), suit: st.suit,
     pending: st.pending, demand: st.demand ? { rank: st.demand.rank } : null,
     drew: myTurn ? st.drew : null,
     deckCount: st.deck.length, log: st.log.slice(-8), deadline: st.deadline, rules: st.rules,

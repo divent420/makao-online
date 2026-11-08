@@ -1400,6 +1400,10 @@ body{background:radial-gradient(ellipse at 50% -18%,#3c1722 0,transparent 42%),#
 
 /* Keep equipped felt themes consistent on the live table, not just the shop preview. */
 .game-table-felt{background:var(--table-pattern)!important;}
+
+/* Keep the shop's table preview tied to the currently selected free or premium felt. */
+.shop-preview{background:var(--table-pattern)!important;}
+.shop-preview .preview-play-area{background:transparent!important;}
 </style>
 </head>
 <body>
@@ -1549,7 +1553,13 @@ function applyTheme() {
   const root=document.documentElement;
   const felt={emerald:['#12634b','#073e31'],blue:['#174d83','#102d50'],purple:['#553b79','#2b1e46'],red:['#783c3e','#401e29'],midnight:['#343b46','#151c28'] }[tableTheme.felt] || ['#12634b','#073e31'];
   const backs={royal:'repeating-linear-gradient(45deg,#243f86,#243f86 6px,#365bb0 6px,#365bb0 12px)',ruby:'repeating-linear-gradient(45deg,#7c2635,#7c2635 6px,#a43d4e 6px,#a43d4e 12px)',forest:'repeating-linear-gradient(45deg,#14513b,#14513b 6px,#247657 6px,#247657 12px)',dark:'repeating-linear-gradient(45deg,#252a32,#252a32 6px,#414957 6px,#414957 12px)'};
-  root.style.setProperty('--felt',felt[0]); root.style.setProperty('--felt2',felt[1]); root.style.setProperty('--table-pattern',tableTheme.felt==='midnight'?'radial-gradient(ellipse at center,#343b46,#151c28)':'radial-gradient(ellipse at center,var(--felt),var(--felt2))'); root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal); const cardRadius=3; root.style.setProperty('--card-radius',cardRadius+'px');
+  root.style.setProperty('--felt',felt[0]);
+  root.style.setProperty('--felt2',felt[1]);
+  root.style.setProperty('--table-pattern',`radial-gradient(ellipse at center,${felt[0]},${felt[1]})`);
+  root.style.setProperty('--back-pattern',backs[tableTheme.back]||backs.royal);
+  const freeBackMarks={royal:'◆',ruby:'♦',forest:'♣',dark:'◈'};
+  root.style.setProperty('--back-mark',JSON.stringify(freeBackMarks[tableTheme.back]||'◆'));
+  const cardRadius=3; root.style.setProperty('--card-radius',cardRadius+'px');
   applyShopEffects();
 }
 function applyShopEffects() {
@@ -1964,7 +1974,8 @@ function shopScreen() {
     const backPreview={nebula:'radial-gradient(circle at 25% 25%,#e0b7ff 0 2px,transparent 3px),linear-gradient(135deg,#241044,#542c91 55%,#17102d)',sunset:'repeating-linear-gradient(135deg,#6b244b 0 7px,#d65d48 7px 14px,#f5b85b 14px 21px)',gold:'repeating-linear-gradient(45deg,#6d4d16 0 5px,#e8c86a 5px 8px,#8d6920 8px 13px)',prism:'linear-gradient(125deg,#f06c9b,#f6c85f,#5bd6b1,#6588ed,#a86ce8)',obsidian:'repeating-linear-gradient(135deg,#080b12 0 8px,#323b4a 8px 10px,#111722 10px 18px)',koi:'radial-gradient(ellipse at 30% 25%,#f6eee0 0 8%,transparent 9%),radial-gradient(ellipse at 70% 70%,#e47a39 0 10%,transparent 11%),linear-gradient(135deg,#082f36,#14525b)',toxic:'repeating-linear-gradient(45deg,#10251c 0 7px,#76d64a 7px 9px,#1d3d2b 9px 16px)',regal:'repeating-linear-gradient(45deg,#101c36 0 8px,#c6a34c 8px 10px,#172748 10px 18px)',glacier:'linear-gradient(135deg,#e3f8ff,#62b7d5 28%,#153b68 70%,#07172d)'};
     const feltPreview={sakura:'linear-gradient(135deg,#9d526f,#512b4b)',aurora:'linear-gradient(135deg,#176b70,#123344)',volcano:'linear-gradient(135deg,#9b3b27,#3c171c)',amethyst:'linear-gradient(135deg,#65448e,#241b3e)',arctic:'linear-gradient(135deg,#397f9c,#142d4d)',copper:'linear-gradient(135deg,#98603d,#38241f)',nightcity:'linear-gradient(135deg,#102b58,#07182c 55%,#154c70)',sand:'linear-gradient(135deg,#b98b55,#725039 55%,#392b29)'};
     const itemMarks={nebula:'✦',sunset:'☼',gold:'◆',prism:'✧',obsidian:'◈',koi:'◉',toxic:'☣',regal:'♛',glacier:'❄',cyber:'⌘',magma:'▲',marble:'◇',sakura:'🌸',aurora:'✧',volcano:'▲',amethyst:'◆',arctic:'❄',copper:'◈',nightcity:'▦',sand:'☼',flame:'🔥',ice:'❄',crown:'♛',neon:'✧',emerald:'◆',solar:'☀',void:'◉',crimson:'♦',royalblue:'◆',rose:'✿'};
-    const itemMark=itemMarks[item.effect]||'✦';
+    const freeBackMarks={'free-back-royal':'◆','free-back-ruby':'♦','free-back-forest':'♣','free-back-dark':'◈'};
+    const itemMark=freeBackMarks[item.id]||itemMarks[item.effect]||'✦';
     const visual = category==='card_back'
       ? h('div',{class:'shop-visual shop-visual-card '+(item.free?'':'premium'),style:item.style||(!item.free?('background:'+backPreview[item.effect]+';'):'')},h('span',{class:'shop-visual-mark'},itemMark))
       : category==='table_theme'

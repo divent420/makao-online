@@ -303,6 +303,12 @@ table td,table th{border-color:#ffffff18}
 .pile-slot{display:grid;justify-items:center;gap:6px;color:#d9e4d5}.pile-slot small{font-size:9px;letter-spacing:.15em;color:#b8cbb9}.pile-slot strong{font-size:11px;color:#f2e4b7}
 .pile-slot .card{width:clamp(54px,6vw,70px);height:clamp(78px,8vw,98px)}
 .pile-slot .card.back{background:var(--back-pattern)}
+.discard-display{display:flex;align-items:center;justify-content:center;gap:5px;min-height:98px}
+.discard-history{display:flex;align-items:center;justify-content:flex-end;gap:3px;max-width:min(34vw,210px);overflow:hidden}
+.discard-history .card{width:clamp(23px,2.8vw,34px);height:clamp(34px,4vw,48px);padding:2px;font-size:9px;border-radius:5px;opacity:.88;box-shadow:0 2px 5px #0005}
+.discard-history .card .s{font-size:11px}
+.discard-display>.card{flex:none;box-shadow:0 5px 14px #0006}
+@media(max-width:600px){.discard-display{gap:4px;min-height:73px}.discard-history{gap:2px;max-width:34vw}.discard-history .card{width:23px;height:34px;font-size:8px}.discard-history .card .s{font-size:9px}.discard-display>.card{width:50px;height:73px}}
 .game-log{text-align:center;min-height:28px;color:#d4e2d4;font-size:11px}.game-timer{text-align:center;font-size:13px;font-weight:800;color:#f3d783}
 .game-actions{min-height:48px;padding:9px;border:1px solid #ffffff1c;border-radius:15px;background:#061b14a8}.game-actions button{min-height:42px}.game-actions button:disabled{opacity:.45}
 .your-hand-label{text-align:center;font-size:9px;letter-spacing:.2em;font-weight:900;color:#d8c17b;margin-top:3px}
@@ -1056,9 +1062,12 @@ function gameScreen() {
   else banner.append(h('span',{},local?(activePlayer?.name+' — your turn'):(g.myTurn?'Your turn — make your move':'Waiting for the next player')));
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
+  const discardHistory=h('div',{class:'discard-history','aria-label':'Previous discarded cards'});
+  (g.discardHistory||[]).forEach((c)=>discardHistory.append(cardEl(c)));
+  const discardDisplay=h('div',{class:'discard-display'},discardHistory,cardEl(g.top));
   const center = h('div', { class: 'game-center-piles' },
     h('div', { class: 'pile-slot' }, drawPile, h('small', {}, 'DRAW PILE'), h('strong', {}, g.deckCount+' left')),
-    h('div', { class: 'pile-slot discard-slot' }, cardEl(g.top), h('small', {}, 'DISCARD'), h('strong', {}, 'Suit '+SYM[g.suit])));
+    h('div', { class: 'pile-slot discard-slot' }, discardDisplay, h('small', {}, 'DISCARD'), h('strong', {}, 'Suit '+SYM[g.suit])));
 
   const hand = h('div', { class: 'hand game-hand' });
   g.hand.forEach((c) => hand.append(cardEl(c, {

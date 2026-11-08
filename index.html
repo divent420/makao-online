@@ -381,6 +381,19 @@ table td,table th{border-color:#ffffff18}
 .shop-preview-section h2{position:sticky;top:0;z-index:2;background:var(--panel,#14241b);padding:3px 0 8px;}
 @media(max-width:760px){.shop-preview-section{top:6px;max-height:42vh;padding:10px;}.shop-preview-section .shop-preview{transform:scale(.88);transform-origin:top center;margin-bottom:-12px;}}
   .primary-game-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}.primary-game-actions>*{min-width:0}.pass-play-button{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #b99a4c88;border-radius:16px;background:linear-gradient(135deg,#1d503b,#102c21);color:#f5e9c1;text-align:left;cursor:pointer;box-shadow:0 8px 22px #06170f55}.pass-play-button strong{display:block;font-size:14px}.pass-play-button small{display:block;color:#c7d8ca;font-size:11px;margin-top:3px}@media(max-width:520px){.primary-game-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-match-button,.pass-play-button{min-height:62px;padding:10px 9px}.pass-play-button{gap:6px}.pass-play-button strong{font-size:12px}.pass-play-button small{font-size:9px}.game-header{gap:7px;padding:8px}.game-timer{flex-basis:78px;width:78px;height:31px;font-size:11px;padding:0 5px}.leave-game-button{padding:8px 10px;font-size:11px}.game-title-lockup{gap:7px}.game-title-lockup strong{font-size:13px}}
+
+/* Live table feedback: played card, waiting state, and turn countdown. */
+@keyframes makao-card-arrive{0%{transform:translateY(-18px) scale(1.12) rotate(-5deg);opacity:.25;filter:brightness(1.7)}65%{transform:translateY(3px) scale(1.03);opacity:1}100%{transform:translateY(0) scale(1);filter:none}}
+.card-arrive{animation:makao-card-arrive .55s cubic-bezier(.2,.8,.25,1) both;box-shadow:0 0 0 3px #f6d878,0 0 24px #f6d87888,0 8px 18px #0007!important}
+@keyframes waiting-breathe{0%,100%{border-color:#ffffff20;box-shadow:0 0 0 0 #d9c16b00}50%{border-color:#d9c16b88;box-shadow:0 0 0 4px #d9c16b16}}
+.game-status-banner .is-waiting{position:relative;padding-left:30px;color:#d9e6d8;animation:waiting-breathe 2.8s ease-in-out infinite}
+.game-status-banner .is-waiting:before{content:'';position:absolute;left:14px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:#d9c16b;box-shadow:0 0 10px #d9c16b;animation:waiting-dot 1.5s ease-in-out infinite}
+@keyframes waiting-dot{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+@keyframes timer-pulse{0%,100%{box-shadow:inset 0 1px #ffffff12,0 3px 10px #0003}50%{box-shadow:0 0 0 3px #e5b64a33,0 0 18px #e5b64a66}}
+.game-timer.timer-warning{border-color:#e8b64e;background:linear-gradient(145deg,#59451c,#302710);color:#ffe19a}
+.game-timer.timer-critical{border-color:#ff7777;background:linear-gradient(145deg,#642c2d,#351b22);color:#ffe0dc;animation:timer-pulse .65s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.card-arrive,.game-status-banner .is-waiting,.game-status-banner .is-waiting:before,.game-timer.timer-critical{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -402,6 +415,7 @@ let sel = [];               // selected hand cards
 let localReady = false, localTurnId = null;
 let choose = null;          // pending Jack/Ace choice: { kind, cards }
 let sayMakao = false;
+let moveFlashUntil = 0;
 let authErr = '';
 let activeScreen = 'home';
 let profileAvatar = null;
@@ -588,8 +602,13 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'state') {
       const prevTurn = S && S.game ? S.game.myTurn : false;
+      const previousTop = S && S.game ? S.game.top : null;
+      const previousLog = S && S.game && S.game.log ? S.game.log[S.game.log.length-1] : null;
       const leftTable = !!(S && S.room && !m.room);
       S = m;
+      const nextTop = m.game ? m.game.top : null;
+      const nextLog = m.game && m.game.log ? m.game.log[m.game.log.length-1] : null;
+      if (m.game && (nextTop !== previousTop || (nextLog && nextLog !== previousLog))) moveFlashUntil = Date.now() + 950;
       if (m.room?.localGame && m.game) { const active=m.game.players.find(p=>p.turn)?.id ?? null; if(active!==localTurnId){localTurnId=active;localReady=false;sel=[];choose=null;sayMakao=false;} } else {localTurnId=null;localReady=false;}
       if (leftTable) loadGameHistory(true);
       if (activeScreen === 'shop' && !shopLoading) loadShop();
@@ -1059,12 +1078,14 @@ function gameScreen() {
     ? 'Draw ' + pend.n + ' cards' + (canStack ? ', or answer with a penalty card (2 / 3 / K♥ / K♠)' : '')
     : 'Wait ' + pend.n + (pend.n > 1 ? ' turns' : ' turn') + (canStack ? ', or answer with a 4' : '')));
   else if (dem) banner.append(h('span', {}, 'Jack demands ' + dem.rank + ' (or play a J)'));
-  else banner.append(h('span',{},local?(activePlayer?.name+' — your turn'):(g.myTurn?'Your turn — make your move':'Waiting for the next player')));
+  else banner.append(h('span',{class:!local&&!g.myTurn?'is-waiting':''},local?(activePlayer?.name+' — your turn'):(g.myTurn?'Your turn — make your move':'Waiting for the next player')));
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
   const discardHistory=h('div',{class:'discard-history','aria-label':'Previous discarded cards'});
   (g.discardHistory||[]).forEach((c)=>discardHistory.append(cardEl(c)));
-  const discardDisplay=h('div',{class:'discard-display'},cardEl(g.top),discardHistory);
+  const topDiscard=cardEl(g.top);
+  if(Date.now()<moveFlashUntil) topDiscard.classList.add('card-arrive');
+  const discardDisplay=h('div',{class:'discard-display'},topDiscard,discardHistory);
   const center = h('div', { class: 'game-center-piles' },
     h('div', { class: 'pile-slot' }, drawPile, h('small', {}, 'DRAW PILE'), h('strong', {}, g.deckCount+' left')),
     h('div', { class: 'pile-slot discard-slot' }, discardDisplay, h('small', {}, 'DISCARD'), h('strong', {}, 'Suit '+SYM[g.suit])));
@@ -1125,7 +1146,9 @@ function tick() {
   if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }
   const s = Math.max(0, Math.round((S.game.deadline - Date.now()) / 1000));
   t.textContent = '⏱ ' + s + 's';
-  t.style.color = S.game.myTurn && s <= 10 ? '#ff8a80' : '';
+  t.classList.toggle('timer-warning', s <= 10 && s > 5);
+  t.classList.toggle('timer-critical', s <= 5);
+  t.style.color = '';
 }
 setInterval(tick, 500);
 

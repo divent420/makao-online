@@ -1159,11 +1159,17 @@ function roomScreen() {
       h('h3',{},'Final score'),
       scoreRows,
       h('div',{class:'postgame-actions'},
-        (r.aiGame || r.members.some(m=>m.bot))
-          ? h('button',{onclick:()=>act({t:r.aiGame?'rematchAI':'rematchBots'})},'🤖 Play again')
-          : (!r.tournament?h('button',{disabled:(r.rematchVotes||[]).includes(S.me.id),onclick:async()=>{const v=await act({t:'rematch'});if(v.ok)toast(v.started?'Rematch started':'Rematch vote recorded ('+v.votes+'/'+v.required+')');}},(r.rematchVotes||[]).includes(S.me.id)?'✓ Rematch requested':'🔁 Rematch'):null),
+        r.aiGame
+          ? h('button',{onclick:()=>act({t:'rematchAI'})},'🤖 Play again')
+          : (!r.tournament
+              ? (isHost
+                  ? h('button',{disabled:r.members.length<2,onclick:async()=>{const v=await act({t:'start'});if(v.error)toast(v.error);else toast('New game started');}},r.readyCheckStarted && r.readyCount>=r.members.length?'▶ Start game':'▶ Play again')
+                  : (r.readyCheckStarted
+                      ? h('button',{class:S.room.members.find(m=>m.id===S.me.id)?.ready?'alt':'',onclick:()=>act({t:'setReady'})},S.room.members.find(m=>m.id===S.me.id)?.ready?'✓ Ready — click to cancel':'I’m ready')
+                      : h('span',{class:'muted'},'Waiting for the host to start the ready check')))
+              : null),
         h('button',{class:'alt',onclick:()=>act({t:'leaveRoom'})},'← Back to main lobby')),
-      !r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null);
+      !r.aiGame&&!r.tournament?h('div',{class:'muted postgame-votes'},r.readyCheckStarted?(r.readyCount+' / '+r.members.length+' players ready'):(isHost?'Press Play again to start the ready check':'Waiting for the host to start the ready check')):null);
     postgamePanels.append(resultPanel);
   }
   // The session leaderboard accumulates every completed game in this room,

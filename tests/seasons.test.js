@@ -8,6 +8,7 @@ function setup(){
   const db=new DatabaseSync(':memory:');
   db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY,username TEXT,display_name TEXT,avatar TEXT);
     INSERT INTO users VALUES(1,'alice','Alice','🂡'),(2,'bob','Bob','🐺'),(3,'cara','Cara','🦊');`);
+  db.exec('CREATE TABLE shop_wallets(user_id INTEGER PRIMARY KEY,coins INTEGER NOT NULL,updated INTEGER NOT NULL);');
   Seasons.initialize(db); return db;
 }
 test('season keys roll over monthly in UTC',()=>{
@@ -43,5 +44,10 @@ test('season history preserves previous month standings',()=>{
   assert.equal(data.previous.length,1);
   assert.equal(data.previous[0].season_key,'2026-11');
   assert.equal(data.previous[0].podium[0].username,'alice');
+  assert.equal(data.previous[0].podium[0].rewardCoins,1000);
+  assert.equal(db.prepare('SELECT coins FROM shop_wallets WHERE user_id=1').get().coins,2000);
+  // Calling the season API again must not grant the podium reward twice.
+  Seasons.getSeasonData(db,1,dec+1000);
+  assert.equal(db.prepare('SELECT coins FROM shop_wallets WHERE user_id=1').get().coins,2000);
   db.close();
 });

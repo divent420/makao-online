@@ -1277,6 +1277,40 @@ body{background:radial-gradient(ellipse at 50% -18%,#3c1722 0,transparent 42%),#
   border-color:#435064!important;color:#dbe2eb!important;
 }
 
+
+/* Lobby rules polish: keep enabled states in the crimson esports palette
+   and reduce the footprint of the rule toggles. */
+.rule-toggle,
+.wrap:not(.app-shell) .rule-toggle{
+  min-height:50px!important;
+  padding:6px!important;
+  border:1px solid #465161!important;
+  border-radius:9px!important;
+  background:linear-gradient(145deg,#242d39,#1a222d)!important;
+  color:#aeb8c7!important;
+  box-shadow:none!important;
+}
+.rule-toggle.is-on,
+.wrap:not(.app-shell) .rule-toggle.is-on{
+  border-color:#a83d52!important;
+  background:linear-gradient(145deg,#49232f,#2a1d27)!important;
+  color:#ff9baa!important;
+}
+.rule-toggle.is-off,
+.wrap:not(.app-shell) .rule-toggle.is-off{
+  border-color:#465161!important;
+  background:linear-gradient(145deg,#242d39,#1a222d)!important;
+  color:#aeb8c7!important;
+}
+.rule-toggle .rule-icon{font-size:20px!important}
+.rule-toggle .rule-status{top:3px!important;right:5px!important;font-size:13px!important}
+.rule-button-grid{gap:7px!important}
+.rule-toggle.read-only{opacity:.78!important}
+@media(max-width:760px){
+  .rule-toggle,.wrap:not(.app-shell) .rule-toggle{min-height:46px!important;padding:5px!important}
+  .rule-toggle .rule-icon{font-size:18px!important}
+}
+
 </style>
 </head>
 <body>

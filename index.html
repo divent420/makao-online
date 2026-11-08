@@ -2395,7 +2395,7 @@ function adminScreen() {
   }else{
     const panel=h('div',{class:'panel'},h('div',{class:'row',style:'justify-content:space-between'},h('h2',{},'Live lobbies & games'),h('button',{class:'alt',onclick:loadAdminOverview},'↻ Refresh')));
     if(!adminActiveRooms.length)panel.append(h('p',{class:'muted'},'No active lobbies right now.'));
-    adminActiveRooms.forEach(room=>panel.append(h('div',{style:'padding:13px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},room.name),h('span',{class:'muted'},room.inGame?'Game in progress':'Lobby')),h('div',{class:'muted'},'Room '+room.id+' · '+room.players.length+' players'),h('div',{class:'row',style:'flex-wrap:wrap;gap:6px'},room.players.map(player=>h('span',{class:'chip'},(player.connected?'● ':'○ ')+player.username)))));
+    adminActiveRooms.forEach(room=>panel.append(h('div',{style:'padding:13px 0;border-top:1px solid var(--line)'},h('div',{class:'row',style:'justify-content:space-between'},h('strong',{},room.name),h('span',{class:'muted'},room.inGame?'Game in progress':'Lobby')),h('div',{class:'muted'},'Room '+room.id+' · '+room.players.length+' players'),h('div',{class:'row',style:'flex-wrap:wrap;gap:6px'},room.players.map(player=>h('span',{class:'chip'},(player.connected?'● ':'○ ')+player.username))))));
     body.append(panel);
   }
   return mount(h('div',{class:'wrap'},topBar(),h('div',{class:'screen-title'},'🛡 Admin dashboard'),h('p',{class:'muted'},'Game operations, players and moderation.'),nav,body,bottomNav('admin')));

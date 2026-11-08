@@ -13,6 +13,7 @@ const Progression = require('./progression');
 const Shop = require('./shop');
 const Social = require('./social');
 const Tournaments = require('./tournaments');
+const Seasons = require('./seasons');
 const { ensureExistingFirstAdmin, insertUserWithFirstAdmin } = require('./admin-bootstrap');
 
 const PORT = process.env.PORT || 3000;
@@ -54,6 +55,7 @@ Progression.initialize(db);
 Shop.initialize(db);
 Social.initialize(db);
 Tournaments.initialize(db);
+Seasons.initialize(db);
 // Safe migrations for databases created by earlier versions.
 for (const [name, def] of [['is_admin', 'INTEGER NOT NULL DEFAULT 0'], ['display_name', "TEXT NOT NULL DEFAULT ''"], ['avatar', "TEXT NOT NULL DEFAULT '🂡'"], ['bio', "TEXT NOT NULL DEFAULT 'Ready to play Makao'"]]) {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
@@ -280,6 +282,10 @@ function finishGame(room) {
   if (!room.localGame) {
   db.exec('BEGIN');
   try {
+    if (ranked) {
+      const seasonResult=Seasons.recordRankedGame(db,humanRows.map(u=>({id:u.id})),humanRows.findIndex(u=>u.id===result.winnerId),M.elo,playedAt);
+      result.season=seasonResult;
+    }
     humanRows.forEach((u, i) => {
       const player = players.find(p => p.id === u.id);
       const won = player && players.indexOf(player) === st.winner;
@@ -821,6 +827,12 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {
     return send(res, 200, { rows: q.top.all() });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/seasons') {
+    const user = userByToken(req.headers['x-token']);
+    if (!user) return send(res, 401, { error: 'Not signed in' });
+    return send(res, 200, Seasons.getSeasonData(db,user.id));
   }
 
   if (req.method === 'GET' && url.pathname === '/events') {

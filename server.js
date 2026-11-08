@@ -148,6 +148,7 @@ function persistRoom(room) {
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
     members: room.members, bots: room.bots || [], localGame: !!room.localGame, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    sessionScores: room.sessionScores || {}, sessionGameIds: room.sessionGameIds || [],
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
   };
@@ -168,6 +169,7 @@ function roomView(r) {
   return {
     id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
+    sessionScores: Object.values(r.sessionScores || {}).sort((a,b) => b.points-a.points || b.wins-a.wins || a.name.localeCompare(b.name)),
     members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), bot: false }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true }))],
     chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
   };
@@ -272,6 +274,7 @@ function restoreRooms() {
         id: saved.id, name: str(saved.name, 30), host: saved.members.includes(saved.host) ? saved.host : saved.members[0],
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
         members: saved.members, bots: Array.isArray(saved.bots) ? saved.bots.filter(b => b && Number(b.id) < 0).slice(0, 4) : [], game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
+        sessionScores: saved.sessionScores && typeof saved.sessionScores === 'object' ? saved.sessionScores : {}, sessionGameIds: Array.isArray(saved.sessionGameIds) ? saved.sessionGameIds : [],
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
@@ -294,10 +297,31 @@ function restoreRooms() {
   if (rooms.size) console.log('Restored ' + rooms.size + ' active Makao room(s)');
 }
 
+function recordSessionScore(room, game) {
+  if (!room || !game) return;
+  const gameKey = String(room.gameStartedAt || game.startedAt || Date.now());
+  room.sessionGameIds = Array.isArray(room.sessionGameIds) ? room.sessionGameIds : [];
+  if (room.sessionGameIds.includes(gameKey)) return;
+  room.sessionScores = room.sessionScores && typeof room.sessionScores === 'object' ? room.sessionScores : {};
+  game.players.forEach((player, index) => {
+    const key = String(player.id);
+    const won = index === game.winner;
+    const row = room.sessionScores[key] || { id: player.id, name: player.name, points: 0, wins: 0, losses: 0, games: 0 };
+    row.name = player.name;
+    row.games += 1;
+    row.wins += won ? 1 : 0;
+    row.losses += won ? 0 : 1;
+    row.points += won ? 3 : 1; // 3 points for a win, 1 for taking part.
+    room.sessionScores[key] = row;
+  });
+  room.sessionGameIds.push(gameKey);
+  if (room.sessionGameIds.length > 100) room.sessionGameIds = room.sessionGameIds.slice(-100);
+}
 function finishGame(room) {
   clearTimeout(room.timer);
   recordGameState(room);
   const st = room.game;
+  recordSessionScore(room, st);
   const players = st.players;
   const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
   const ranked = !room.aiGame && !room.localGame && !room.tournamentId && M.isRanked(room.rules);

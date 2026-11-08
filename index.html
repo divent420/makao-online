@@ -320,10 +320,13 @@ table td,table th{border-color:#ffffff18}
 .pile-slot .card.back{background:var(--back-pattern)}
 .discard-display{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:7px;min-height:98px}
 .discard-display>.card{flex:none;box-shadow:0 5px 14px #0006}
-.discard-history{display:flex;align-items:center;justify-content:flex-start;gap:3px;max-width:min(27vw,165px);overflow:hidden}
-.discard-history .card{width:19px;height:28px;flex:none;padding:1px;font-size:7px;border-radius:4px;opacity:.86;box-shadow:0 2px 5px #0005}
-.discard-history .card .s{font-size:9px}
-@media(max-width:600px){.discard-display{gap:5px;min-height:73px}.discard-history{gap:2px;max-width:27vw}.discard-history .card{width:16px;height:24px;font-size:6px}.discard-history .card .s{font-size:8px}.discard-display>.card{width:50px;height:73px}}
+.discard-history{display:flex;align-items:center;justify-content:flex-start;gap:0;max-width:min(34vw,250px);overflow:visible;padding:3px 0 5px 3px}
+.discard-history .card{width:44px;height:64px;flex:0 0 44px;margin-left:-17px;padding:2px;font-size:12px;border-radius:3px;opacity:.98;box-shadow:0 3px 9px #0008;position:relative}
+.discard-history .card:first-child{margin-left:0}
+.discard-history .card .s{font-size:17px}
+.discard-history .card .card-corner{font-size:9px}
+.discard-history .card .card-corner span{font-size:8px}
+@media(max-width:600px){.discard-display{gap:5px;min-height:73px}.discard-history{gap:0;max-width:42vw;padding:2px 0 4px 2px}.discard-history .card{width:25px;height:37px;flex-basis:25px;margin-left:-9px;font-size:9px}.discard-history .card:first-child{margin-left:0}.discard-history .card .s{font-size:12px}.discard-display>.card{width:50px;height:73px}}
 .game-log{text-align:center;min-height:28px;color:#d4e2d4;font-size:11px}.game-timer{text-align:center;font-size:13px;font-weight:800;color:#f3d783}
 .game-actions{min-height:48px;padding:9px;border:1px solid #ffffff1c;border-radius:15px;background:#061b14a8}.game-actions button{min-height:42px}.game-actions button:disabled{opacity:.45}
 .your-hand-label{text-align:center;font-size:9px;letter-spacing:.2em;font-weight:900;color:#d8c17b;margin-top:3px}
@@ -1238,7 +1241,7 @@ function gameScreen() {
 
   const drawPile = h('div', { class: 'card back', title: 'Draw', onclick: () => { if (!finished && g.myTurn && !pend && !g.drew) act({ t: 'draw' }); } });
   const discardHistory=h('div',{class:'discard-history','aria-label':'Previous discarded cards'});
-  [...(g.discardHistory||[])].reverse().forEach((c)=>discardHistory.append(cardEl(c)));
+  (g.discardHistory||[]).slice(-6).reverse().forEach((c)=>discardHistory.append(cardEl(c)));
   const topDiscard=cardEl(g.top);
   if(Date.now()<moveFlashUntil) topDiscard.classList.add('card-arrive');
   const discardDisplay=h('div',{class:'discard-display'},topDiscard,discardHistory);

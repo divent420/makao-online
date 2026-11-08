@@ -613,6 +613,101 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .mini i,.card.back{background:var(--back-pattern);border-color:#ffad55}
 @media(max-width:600px){.app-bottom-nav{background:#191d23f2}}
 
+
+/* Graphite Ember — page-specific colour pass for Home, Shop and Profile. */
+:root{
+  --bg:#17191d;--panel:#242930;--panel2:#292e35;--line:#454c56;
+  --text:#f4f1eb;--muted:#aaa9a4;--accent:#ff9b42;--gold:#ffad55;
+}
+body{background:#17191d!important;color:#f4f1eb!important}
+.wrap.app-shell,.wrap{color:#f4f1eb}
+.app-topbar,.app-bottom-nav{background:rgba(25,28,33,.97)!important;border-color:#454c56!important;color:#f4f1eb!important}
+.app-bottom-nav button{color:#aaa9a4!important}
+.app-bottom-nav button.active{background:#3a3027!important;color:#ffbd78!important}
+.profile-chip,.wallet-chip,.level-pill{background:linear-gradient(145deg,#30353d,#242930)!important;border:1px solid #454c56!important;color:#f4f1eb!important}
+.profile-chip .avatar,.avatar{background:linear-gradient(145deg,#454c56,#292e35)!important;border-color:#ff9b42!important}
+.welcome-row h1,.screen-title,.section-heading h2,.home-section h2,.play-hub h2{color:#f4f1eb!important}
+.welcome-row p,.section-heading p,.muted{color:#aaa9a4}
+.eyebrow,.welcome-row .eyebrow{color:#ffad55!important}
+.play-hub,.home-section,.play-option-card,.promo-card,.how-to-panel{
+ background:linear-gradient(145deg,#292e35,#1f2329)!important;
+ border:1px solid #454c56!important;color:#f4f1eb!important;
+ box-shadow:0 12px 28px #0005;
+}
+.play-option-card,.home-section,.play-hub{border-color:#454c56!important}
+.section-heading{border-color:#454c56}
+.option-icon,.quick-match-icon,.history-result-icon{background:linear-gradient(145deg,#493526,#30251e)!important;color:#ffbd78!important;border:1px solid #9c572b!important}
+.quick-match-button,.pass-play-button,.option-play,.promo-button{
+ background:linear-gradient(135deg,#a95722,#743b1c)!important;
+ border:1px solid #ffad55!important;color:#fff4e8!important;
+ box-shadow:0 7px 18px #0005;
+}
+.quick-match-button:hover,.pass-play-button:hover,.option-play:hover,.promo-button:hover{background:linear-gradient(135deg,#c56b2d,#8a4822)!important;border-color:#ffc184!important}
+.quick-match-copy small,.pass-play-button small,.promo-card p{color:#e4d0bd!important}
+.ai-controls select,.create-table-form input,.create-table-form select,.create-table-form button,
+.create-table-form input:focus,.create-table-form select:focus{
+ background:#191d23!important;border-color:#555e69!important;color:#f4f1eb!important;
+}
+.create-table-details,.lobby-privacy-check{background:#242930!important;border-color:#555e69!important;color:#e4e0d8!important}
+.table-list-row,.history-row,.home-history-row{background:#252a31!important;border-color:#454c56!important;color:#f4f1eb!important}
+.empty-state{background:#20252c!important;border-color:#555e69!important;color:#aaa9a4!important}
+.leaderboard-home table th{color:#ffbd78!important}
+.leaderboard-home table td,.leaderboard-home table th{border-color:#454c56!important}
+.leaderboard-home table tr.me{background:#493526!important}
+.season-player-summary,.your-record{background:#302b27!important;border:1px solid #79583e!important;color:#f4f1eb!important}
+.your-record span{color:#c1b5a8!important}
+.your-record strong,.rank-emblem,.promo-sparkle{color:#ffbd78!important}
+.promo-card{background:radial-gradient(circle at 90% 0,#754522 0,transparent 48%),linear-gradient(145deg,#302b27,#202329)!important}
+.how-to-panel{color:#e4e0d8!important}
+.how-to-panel summary{color:#ffbd78!important}
+
+/* Shop surfaces use graphite and ember; keep cosmetic artwork swatches intact. */
+.shop-wallet,.shop-section,.shop-earn-note,.shop-note,.shop-preview-section{
+ background:linear-gradient(145deg,#292e35,#1f2329)!important;
+ border:1px solid #454c56!important;color:#f4f1eb!important;
+}
+.shop-wallet{background:linear-gradient(110deg,#493526,#29231f)!important;border-color:#9c572b!important}
+.shop-wallet strong,.shop-wallet>div:last-child{color:#ffbd78!important}
+.shop-wallet .muted,.shop-item p,.shop-note,.shop-earn-note{color:#aaa9a4!important}
+.shop-preview{background:#191d23!important;border:1px solid #555e69!important;box-shadow:inset 0 0 22px #0007!important}
+.shop-preview-section h2{background:#292e35!important;color:#f4f1eb!important}
+.shop-item,.shop-option,.appearance-option{
+ background:linear-gradient(145deg,#30353d,#242930)!important;
+ border:1px solid #454c56!important;color:#f4f1eb!important;
+}
+.shop-item:hover,.shop-option:hover,.appearance-option:hover{border-color:#9c572b!important;background:linear-gradient(145deg,#383b3e,#292e35)!important}
+.shop-option.selected,.appearance-option.selected{border-color:#ff9b42!important;box-shadow:0 0 0 1px #ff9b42 inset!important}
+.shop-option-info strong,.shop-section h2{color:#f4f1eb!important}
+.shop-option-info p{color:#aaa9a4!important}
+.shop-option-button,.shop-item button{background:#493526!important;border:1px solid #9c572b!important;color:#ffd09b!important}
+.shop-option-button:hover,.shop-item button:hover{background:#654126!important;border-color:#ffad55!important}
+.shop-option-button:disabled{background:#30353d!important;border-color:#555e69!important;color:#c1beb8!important}
+.shop-section .swatch{border-color:#555e69!important}
+.shop-section .swatch.active{outline-color:#ff9b42!important}
+.shop-preview-section{box-shadow:0 12px 28px #0007!important}
+
+/* Profile, progression, challenges, achievements and match history. */
+.profile-screen,.profile-content{color:#f4f1eb!important}
+.wrap:has(.screen-title:is(:not(:empty))) .screen-title{color:#f4f1eb!important}
+.wrap .panel{background:linear-gradient(145deg,#292e35,#202329)!important;border-color:#454c56!important;color:#f4f1eb}
+.wrap .panel h2,.wrap .panel h3{color:#f4f1eb!important}
+.wrap .panel .muted{color:#aaa9a4!important}
+.avatar.big{background:linear-gradient(145deg,#493526,#29231f)!important;border:2px solid #ff9b42!important;color:#fff4e8!important}
+.xp-track,.challenge-track{background:#191d23!important;border:1px solid #555e69!important}
+.xp-fill,.challenge-track>div{background:linear-gradient(90deg,#c56b2d,#ffad55)!important}
+.challenge,.achievement{background:#252a31!important;border:1px solid #454c56!important;color:#f4f1eb!important}
+.achievement-icon{background:#493526!important;color:#ffbd78!important}
+.achievement.locked{opacity:.65}
+input,select,textarea{background:#191d23!important;border-color:#555e69!important;color:#f4f1eb!important}
+input::placeholder,textarea::placeholder{color:#858991!important}
+button.alt{background:#30353d!important;border-color:#555e69!important;color:#e4e0d8!important}
+button.alt:hover{background:#3d444e!important;border-color:#ff9b42!important;color:#fff4e8!important}
+button:not(.alt):not(.warn):not(.text-action):not(.shop-option-button){ }
+@media(max-width:600px){
+ .play-hub,.home-section,.promo-card,.play-option-card{background:linear-gradient(145deg,#292e35,#1f2329)!important}
+ .shop-wallet,.shop-section,.shop-earn-note{background:linear-gradient(145deg,#292e35,#1f2329)!important}
+}
+
 </style>
 </head>
 <body>

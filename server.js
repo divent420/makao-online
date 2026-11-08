@@ -167,7 +167,7 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, quickMatch: !!r.quickMatch, readinessEnabled: !r.quickMatch && !r.aiGame && !r.localGame && !r.tournamentId, readyCheckStarted: !!r.readyCheckStarted, readyCount: (r.readyPlayers || []).length + (r.bots || []).length, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    id: r.id, name: r.name, host: r.host, max: r.max, privateOnly: !!r.privateOnly, localGame: !!r.localGame, quickMatch: !!r.quickMatch, readinessEnabled: !r.quickMatch && !r.aiGame && !r.localGame && !r.tournamentId, readyCheckStarted: !!r.readyCheckStarted, readyCount: (r.readyPlayers || []).length + (r.bots || []).length, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !!r.quickMatch,
     sessionScores: Object.values(r.sessionScores || {}).sort((a,b) => b.points-a.points || b.wins-a.wins || a.name.localeCompare(b.name)),
     members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), disconnectDeadline: Number(r.disconnectDeadlines?.[id]) || null, bot: false, ready: (r.readyPlayers || []).includes(id) }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true, ready:true }))],
@@ -204,8 +204,8 @@ function stateFor(uid) {
   }
   return {
     t: 'state', me: userView(u),
-    lobbies: [...rooms.values()].map((r) => ({
-      id: r.id, name: r.name, host: uname(r.host), count: r.members.length + (r.bots || []).length, max: r.max, playing: !!r.game || !!r.result,
+    lobbies: [...rooms.values()].filter((r) => !r.privateOnly || r.members.includes(uid)).map((r) => ({
+      id: r.id, name: r.name, host: uname(r.host), privateOnly: !!r.privateOnly, count: r.members.length + (r.bots || []).length, max: r.max, playing: !!r.game || !!r.result,
       ranked: !!r.quickMatch,
     })),
     room: room ? roomView(room) : null,
@@ -292,7 +292,7 @@ function restoreRooms() {
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, readyPlayers: Array.isArray(saved.readyPlayers) ? saved.readyPlayers.filter(id => saved.members.includes(id)) : [], readyCheckStarted: !!saved.readyCheckStarted, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
-        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, localGame: !!saved.localGame, quickMatch: !!saved.quickMatch,
+        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, privateOnly: !!saved.privateOnly, localGame: !!saved.localGame, quickMatch: !!saved.quickMatch,
         rules: M.sanitizeRules(saved.rules),
       };
       if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
@@ -526,7 +526,7 @@ function handleAct(user, m) {
       const id = crypto.randomBytes(4).toString('hex');
       rooms.set(id, {
         id, name: str(m.name, 30).trim() || user.username + "'s table",
-        host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)),
+        host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)), privateOnly: !!m.privateOnly,
         members: [uid], disconnectDeadlines: {}, bots: [], readyPlayers: [], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }, aiGame: false, aiDifficulty: 'normal',
       });
@@ -538,6 +538,7 @@ function handleAct(user, m) {
       if (room) return { error: 'You are already at a table' };
       const r = rooms.get(str(m.id, 20));
       if (!r) return { error: 'That table no longer exists' };
+      if (r.privateOnly) return { error: 'This is an invite-only table. Ask the host for an invitation.' };
       if (r.game || r.result) return { error: 'That table has already played; create a new table or request a rematch' };
       if (r.members.some(id => Social.isBlocked(db, uid, id))) return { error: 'You cannot join a table with a player you have blocked or who blocked you' };
       if (r.members.length + (r.bots || []).length >= r.max) return { error: 'That table is full' };

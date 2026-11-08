@@ -458,7 +458,7 @@ table td,table th{border-color:#ffffff18}
 }
 
 .connection-banner{position:fixed;z-index:9999;top:12px;left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 28px));display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px solid #d6a34a66;border-radius:10px;background:#17202df2;color:#f4e7c8;box-shadow:0 10px 32px #0009;font-size:13px;backdrop-filter:blur(12px)}.connection-banner .connection-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#e5a83d;box-shadow:0 0 0 4px #e5a83d22;animation:connectionPulse 1.2s infinite}.connection-banner.restored{border-color:#43c78a66;color:#d8ffea}.connection-banner.restored .connection-dot{background:#43c78a;box-shadow:0 0 0 4px #43c78a22;animation:none}@keyframes connectionPulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.connection-banner .connection-dot{animation:none}}
-\n.player-disconnect-notice{display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:12px 14px;border:1px solid #e6a34a;background:linear-gradient(135deg,#4b3218,#302315);color:#ffe6b7;border-radius:10px;box-shadow:0 5px 18px #0005;font-size:13px;line-height:1.4}.player-disconnect-notice strong{font-size:14px;color:#ffd27d}.player-disconnect-notice span{overflow-wrap:anywhere}@media(max-width:600px){.player-disconnect-notice{position:relative;margin:0 0 9px;padding:13px 12px;font-size:13px}.player-disconnect-notice strong{font-size:14px}}\n</style>
+\n.player-disconnect-notice{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 13px;border:1px solid #d5a64b55;border-left:3px solid #d5a64b;background:linear-gradient(100deg,#172c22f2,#13251df2);color:#d9e5d8;border-radius:9px;box-shadow:0 4px 14px #0002;font-size:12px;line-height:1.35}.disconnect-status-dot{display:block;flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#e3ad51;box-shadow:0 0 0 4px #e3ad511c;animation:disconnectPulse 1.8s ease-in-out infinite}.disconnect-notice-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0}.disconnect-notice-copy strong{font-size:12px;font-weight:700;color:#f0cf8c}.disconnect-notice-copy span{min-width:0;overflow-wrap:anywhere;color:#b8c9ba;font-size:11px}@keyframes disconnectPulse{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.disconnect-status-dot{animation:none}}@media(max-width:600px){.player-disconnect-notice{gap:9px;margin:0 0 8px;padding:9px 11px;border-radius:8px}.disconnect-notice-copy{flex-direction:column;align-items:flex-start;gap:2px}.disconnect-notice-copy strong{font-size:11px}.disconnect-notice-copy span{font-size:11px}}\n</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1176,8 +1176,10 @@ function gameScreen() {
   const disconnectedPlayers = (S.room.members || []).filter(m => m.id !== S.me.id && !m.online);
   const disconnectNotice = disconnectedPlayers.length
     ? h('div',{class:'player-disconnect-notice',role:'status','aria-live':'assertive'},
-        h('strong',{},'⚠ Player disconnected'),
-        h('span',{},disconnectedPlayers.map(m=>m.displayName||m.username).join(', ')+' · waiting for them to reconnect'))
+        h('span',{class:'disconnect-status-dot'}),
+        h('div',{class:'disconnect-notice-copy'},
+          h('strong',{},'Waiting for player to reconnect'),
+          h('span',{},disconnectedPlayers.map(m=>m.displayName||m.username).join(', '))))
     : null;
   const finished = g.winner != null;
   const pend = g.pending, dem = g.demand;

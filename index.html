@@ -205,6 +205,14 @@
   @media(max-width:420px) { .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .shape-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 
 
+  /* Larger cards in the appearance table preview. */
+  .shop-preview .preview-play-area{gap:54px;padding:18px 0 14px}
+  .shop-preview .preview-pile .card{width:64px;height:92px;font-size:20px}
+  .shop-preview .preview-pile .card .s{font-size:27px}
+  .shop-preview .preview-hand{gap:10px;padding:12px 0 5px}
+  .shop-preview .preview-hand .card{width:58px;height:84px;font-size:18px}
+  .shop-preview .preview-hand .card .s{font-size:24px}
+  .shop-preview .preview-pile small{font-size:10px}
   /* Lobby rules: compact icon toggles with hover labels and clear state colors. */
   .lobby-rules { margin-top:14px; border-top:1px solid var(--line); padding-top:14px; }
   .rule-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
@@ -937,7 +945,7 @@ function shopScreen() {
     mount(h('div',{class:'wrap'},topBar(),h('div',{class:'panel'},shopError,h('button',{class:'alt',onclick:loadShop},'Retry')),bottomNav('shop'))); return;
   }
   const wallet=h('div',{class:'shop-wallet'},h('div',{},h('strong',{},'Your coin balance'),h('div',{class:'muted'},'Earn coins by completing matches')),h('div',{style:'font-size:23px;font-weight:800;color:#f5d77b'},'🪙 '+shopData.coins));
-  const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-opponents'},h('span',{},'🂡 Player'),h('span',{},'🤖 4 cards'),h('span',{},'🐺 6 cards')),h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')),h('div',{class:'preview-caption'},'Live preview · current table felt, card back and shape'));
+  const preview=h('div',{class:'shop-preview'},h('div',{class:'preview-play-area'},h('div',{class:'preview-pile'},h('div',{class:'card back'}),h('small',{},'DRAW')),h('div',{class:'preview-pile'},cardEl('AS'),h('small',{},'DISCARD'))),h('div',{class:'preview-hand'},cardEl('7H'),cardEl('KC'),cardEl('QD')));
   const content=[wallet,h('section',{class:'panel shop-section shop-preview-section'},h('h2',{},'Table preview'),preview)];
   const cardRadius=Math.max(0,Math.min(16,Number(tableTheme.cardRadius)||0));
   const shapeControl=h('section',{class:'panel shop-section card-shape-control'},

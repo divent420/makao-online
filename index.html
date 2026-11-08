@@ -1140,6 +1140,143 @@ th{color:#8f9cad!important;text-transform:uppercase;letter-spacing:.1em;font-siz
   *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 
+
+/* Final palette cleanup: remove remaining Graphite Ember / felt-green overrides
+   from Home and the post-match lobby. These selectors intentionally win over
+   older theme layers that used !important. */
+:root{
+  --accent:#ed334f!important;--gold:#f3bd65!important;
+  --felt:#202a35!important;--felt2:#111820!important;
+}
+body{background:radial-gradient(ellipse at 50% -18%,#3c1722 0,transparent 42%),#0b0d11!important;color:#f4f6fa!important}
+
+/* Home page — every formerly ember/orange highlight now uses the esports red. */
+.wrap.app-shell .welcome-row .eyebrow,
+.wrap.app-shell .eyebrow,
+.wrap.app-shell .text-action,
+.wrap.app-shell .rank-emblem,
+.wrap.app-shell .promo-sparkle,
+.wrap.app-shell .your-record strong,
+.wrap.app-shell .season-player-summary strong,
+.wrap.app-shell .level-pill span,
+.wrap.app-shell .level-pill strong,
+.wrap.app-shell .leaderboard-home th{color:#ff7183!important}
+.wrap.app-shell .level-pill{
+  background:linear-gradient(145deg,#29212a,#1a222d)!important;
+  border-color:#663544!important;color:#f4f6fa!important;
+}
+.wrap.app-shell .quick-match-button,
+.wrap.app-shell .pass-play-button,
+.wrap.app-shell .option-play,
+.wrap.app-shell .promo-button{
+  background:linear-gradient(120deg,#ed334f,#9f1d38)!important;
+  border:1px solid #ff7183!important;color:#fff!important;
+  box-shadow:0 8px 22px #0006,0 0 18px #ed334f20!important;
+}
+.wrap.app-shell .quick-match-button:hover,
+.wrap.app-shell .pass-play-button:hover,
+.wrap.app-shell .option-play:hover,
+.wrap.app-shell .promo-button:hover{
+  background:linear-gradient(120deg,#ff5268,#b51e3c)!important;
+  border-color:#ff9baa!important;
+}
+.wrap.app-shell .quick-match-icon,
+.wrap.app-shell .option-icon,
+.wrap.app-shell .history-result-icon{
+  background:linear-gradient(145deg,#48202b,#251a22)!important;
+  color:#ff8292!important;border-color:#854052!important;
+}
+.wrap.app-shell .quick-match-copy small,
+.wrap.app-shell .pass-play-button small,
+.wrap.app-shell .promo-card p{color:#c1cbd7!important}
+.wrap.app-shell .your-record,
+.wrap.app-shell .season-player-summary{
+  background:linear-gradient(120deg,#33212a,#1b2530)!important;
+  border:1px solid #633747!important;color:#e8edf4!important;
+}
+.wrap.app-shell .promo-card{
+  background:radial-gradient(circle at 90% 0,#8e263d55,transparent 48%),linear-gradient(145deg,#242b36,#171c24)!important;
+}
+.wrap.app-shell .play-hub,
+.wrap.app-shell .home-section,
+.wrap.app-shell .play-option-card,
+.wrap.app-shell .promo-card,
+.wrap.app-shell .how-to-panel,
+.wrap.app-shell .table-list-row,
+.wrap.app-shell .history-row{
+  background:linear-gradient(145deg,#1b222c,#141920)!important;
+  border-color:#303b49!important;color:#f4f6fa!important;
+}
+.wrap.app-shell .section-heading{border-color:#303b49!important}
+.wrap.app-shell .create-table-form input,
+.wrap.app-shell .create-table-form select,
+.wrap.app-shell .ai-controls select{
+  background:#0e131a!important;border-color:#394657!important;color:#f4f6fa!important;
+}
+.wrap.app-shell .lobby-privacy-check{
+  background:#111821!important;border-color:#3a4657!important;color:#dbe2eb!important;
+}
+.wrap.app-shell .lobby-privacy-check input{accent-color:#ed334f!important}
+.wrap.app-shell .leaderboard-home tr.me{background:#3a202a!important}
+
+/* Post-game room — neutral graphite panels with crimson winner/leader focus. */
+.wrap:not(.app-shell) .postgame-panel,
+.wrap:not(.app-shell) .lobby-session-leaderboard,
+.wrap:not(.app-shell) .wrap .panel,
+.wrap:not(.app-shell) .grid>.panel{
+  background:linear-gradient(145deg,#202a36,#151c25)!important;
+  border:1px solid #3d4a5b!important;color:#e9eef5!important;
+}
+.postgame-panel .postgame-title{color:#ff8292!important}
+.postgame-panel .postgame-subtitle,
+.postgame-panel .postgame-votes{color:#aab6c5!important}
+.postgame-panel .results-score-row{
+  background:#19222d!important;border-color:#354355!important;color:#e9eef5!important;
+}
+.postgame-panel .results-score-row.results-winner{
+  background:linear-gradient(90deg,#46212d,#202833)!important;
+  border-color:#ed5268!important;
+}
+.postgame-panel .results-place{color:#f3bd65!important}
+.postgame-panel .results-player strong,
+.postgame-panel .results-rating strong{color:#fff!important}
+.postgame-panel .postgame-actions button:not(.alt){
+  background:linear-gradient(120deg,#ed334f,#9f1d38)!important;
+  border-color:#ff7183!important;color:#fff!important;
+}
+.lobby-session-leaderboard .session-score-head{color:#9aa6b5!important;border-color:#354355!important}
+.lobby-session-leaderboard .session-score-row{
+  background:transparent!important;border-color:#354355!important;color:#dce4ee!important;
+}
+.lobby-session-leaderboard .session-score-leader{
+  background:linear-gradient(90deg,#46212d,#202833)!important;
+  box-shadow:inset 3px 0 #ed5268!important;
+}
+.lobby-session-leaderboard .session-score-leader strong,
+.lobby-session-leaderboard .session-score-leader .session-score-name{color:#ff9baa!important}
+.lobby-session-leaderboard h2{color:#f4f6fa!important}
+.wrap:not(.app-shell) .lobby-member-row,
+.wrap:not(.app-shell) .lobby-online-friend,
+.wrap:not(.app-shell) .lobby-friend-picker{
+  background:#141b24!important;border-color:#344152!important;color:#e9eef5!important;
+}
+.wrap:not(.app-shell) .lobby-rules,
+.wrap:not(.app-shell) .rule-setting{
+  background:#151c25!important;border-color:#344152!important;color:#dbe2eb!important;
+}
+.wrap:not(.app-shell) .postgame-votes,
+.wrap:not(.app-shell) .muted{color:#9aa6b5!important}
+.wrap:not(.app-shell) .pos{color:#ff9baa!important}
+.wrap:not(.app-shell) .neg{color:#ff7183!important}
+.wrap:not(.app-shell) button:not(.alt):not(.warn){
+  background:linear-gradient(120deg,#ed334f,#9f1d38)!important;
+  border-color:#ff7183!important;color:#fff!important;
+}
+.wrap:not(.app-shell) button.alt{
+  background:linear-gradient(145deg,#293341,#1b232e)!important;
+  border-color:#435064!important;color:#dbe2eb!important;
+}
+
 </style>
 </head>
 <body>

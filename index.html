@@ -37,6 +37,7 @@
   #chat { height: 150px; overflow-y: auto; background: #0e1117; border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 8px; }
   #chat b { color: var(--gold); }
 
+.season-player-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 12px;padding:10px 12px;background:#101923;border:1px solid #ffffff12;border-radius:10px;font-size:12px;color:#aeb9c9}.season-player-summary strong{color:#f3d77b;font-size:14px}
   /* table */
   .table { background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt2) 100%); border-radius: 16px; padding: 14px; min-height: 520px; display: flex; flex-direction: column; gap: 14px; border: 1px solid #0a2c1c; }
   .opps { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -469,7 +470,8 @@ const app = $('app');
 let token = localStorage.getItem('mk_token');
 let S = null;               // latest server state
 let es = null;
-let board = [];             // leaderboard rows
+let board = [];             // all-time leaderboard rows
+let seasonData = null, seasonLoading = false;
 let gameHistoryData = null, gameHistoryLoading = false, gameHistoryLoadedAt = 0;
 let replayData = null, replayStep = 0, replayTimer = null;
 let sel = [];               // selected hand cards
@@ -689,6 +691,13 @@ async function loadBoard() {
   board = r.rows || [];
   if (S && !S.room) render();
 }
+async function loadSeason() {
+  if (seasonLoading) return;
+  seasonLoading=true;
+  try { seasonData=await api('/api/seasons'); }
+  catch (_) { seasonData=null; }
+  finally { seasonLoading=false; if(S&&!S.room&&activeScreen==='home')render(); }
+}
 
 // ---------- rendering helpers ----------
 function h(tag, attrs, ...kids) {
@@ -886,11 +895,14 @@ function lobbyScreen() {
   S.lobbies.forEach((l) => list.append(h('div', { class:'table-list-row' },
     h('div', { class: 'grow' }, h('b', {}, l.name), h('div', { class: 'muted' }, 'Host '+l.host+' · '+l.count+'/'+l.max+' players'+(l.playing?' · in game':'')+(l.ranked?' · ranked':' · casual'))),
     h('button', { class:'small-action', disabled: l.playing || l.count >= l.max, onclick: () => act({ t: 'joinRoom', id: l.id }) }, 'Join'))));
-  const tbl = h('table', {}, h('tr', {}, h('th', {}, '#'), h('th', {}, 'Player'), h('th', {}, 'Rating'), h('th', {}, 'W / G')));
+  if (!seasonData && !seasonLoading) loadSeason();
+  const tbl = h('table', {}, h('tr', {}, h('th', {}, '#'), h('th', {}, 'Player'), h('th', {}, 'Rank'), h('th', {}, 'W / G')));
+  (seasonData?.leaderboard||[]).slice(0,8).forEach(r=>tbl.append(h('tr',{class:r.id===S.me.id?'me':''},h('td',{},r.rank),h('td',{},h('button',{class:'alt player-link',style:'padding:5px 8px;background:transparent;box-shadow:none;text-align:left',onclick:()=>openPlayerProfile(r.id)},(r.avatar||'🂡')+' '+r.displayName)),h('td',{},r.tier.icon+' '+r.tier.name),h('td',{},r.wins+' / '+r.games))));
+  if (!(seasonData?.leaderboard||[]).length) tbl.append(h('tr',{},h('td',{colspan:4,class:'muted'},'Play ranked matches to appear here')));
   board.slice(0, 8).forEach((r, i) => tbl.append(h('tr', { class: r.username === S.me.username ? 'me' : '' },
     h('td', {}, i + 1), h('td', {}, h('button', { class:'alt player-link', style:'padding:5px 8px;background:transparent;box-shadow:none;text-align:left', onclick:()=>openPlayerProfile(r.id) }, (r.avatar||'🂡')+' '+(r.display_name||r.username))),
     h('td', {}, r.rating), h('td', {}, r.wins + ' / ' + r.games))));
-  if (!board.length) tbl.append(h('tr', {}, h('td', { colspan: 4, class: 'muted' }, 'No ranked games yet')));
+
   const historyPanel=h('section',{class:'game-history-panel home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Recent games'),h('p',{},'Pick up where you left off')),h('button',{class:'text-action',onclick:()=>loadGameHistory(true)},'Refresh ↻')));
   if(gameHistoryLoading&&!gameHistoryData) historyPanel.append(h('div',{class:'empty-state'},'Loading your games…'));
@@ -916,9 +928,11 @@ function lobbyScreen() {
     list,
     h('details',{class:'create-table-details',id:'create-table'},h('summary',{},'＋ Create a private table'),
       h('div',{class:'create-table-form'},h('input',{id:'rn',placeholder:S.me.displayName+"'s table",maxlength:30}),h('select',{id:'rm'},[4,3,2].map(n=>h('option',{value:n},n+' players'))),h('button',{onclick:()=>act({t:'createRoom',name:$('rn').value,max:Number($('rm').value)})},'Create table'))));
+  const season=seasonData?.current;
   const rankPanel=h('section',{class:'home-section leaderboard-home'},
-    h('div',{class:'section-heading'},h('div',{},h('h2',{},'Leaderboard'),h('p',{},'Top players this season')),h('span',{class:'rank-emblem'},'🏆')),
-    tbl,h('div',{class:'your-record'},h('span',{},'YOUR RECORD'),h('strong',{},S.me.wins+' wins · '+S.me.games+' games')));
+    h('div',{class:'section-heading'},h('div',{},h('h2',{},'Ranked season'),h('p',{},season?season.title+' · '+season.daysRemaining+' days remaining':'Loading current season…')),h('span',{class:'rank-emblem'},'🏆')),
+    h('div',{class:'season-player-summary'},h('strong',{},(season?.tier?.icon||'🥉')+' '+(season?.tier?.name||'Bronze')),h('span',{},(season?.rating??1000)+' rating'),h('span',{},season?.rank?'#'+season.rank:'Unranked')),
+    tbl,h('div',{class:'your-record'},h('span',{},'SEASON RECORD'),h('strong',{},(season?.wins??0)+' wins · '+(season?.games??0)+' games')));
   const welcome=h('div',{class:'welcome-row'},h('div',{},h('div',{class:'eyebrow'},'WELCOME BACK'),h('h1',{},'Ready to play?'),h('p',{},'Your next win is one game away.')),h('div',{class:'level-pill'},h('span',{},'♛'),h('strong',{},'Player'),h('small',{},'Level up as you play')));
   mount(h('div',{class:'wrap app-shell'},topBar(),welcome,
     h('div',{class:'home-layout'},
@@ -1286,7 +1300,7 @@ function render() {
 
 render();
 if (token) connect();
-loadBoard(); setInterval(() => { if (token && S && !S.room) loadBoard(); if (token && activeScreen === 'social' && !socialLoading) loadSocial(); }, 15000);
+loadBoard(); loadSeason(); setInterval(() => { if (token && S && !S.room) { loadBoard(); if(activeScreen==='home')loadSeason(); } if (token && activeScreen === 'social' && !socialLoading) loadSocial(); }, 15000);
 </script>
 </body>
 </html>

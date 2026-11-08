@@ -556,75 +556,62 @@ table td,table th{border-color:#ffffff18}
 @media(prefers-reduced-motion:reduce){.game-hand .card.card-dealt,.game-player-card.turn,.game-player-card.turn:after,.pile-slot:has(.card.back:active) .card.back,.discard-history .card{animation:none!important}.game-hand .card,.game-actions button{transition:none!important}}
 
 
-/* Experimental midnight-sapphire palette */
-:root{
-  --felt:#15516d;--felt2:#092d49;--gold:#8ce7f4;
-  --panel:#172638;--line:#304b66;--accent:#69d5ec;
-  --surface:#1b3046;--surface2:#223b54;
-  --ink:#edf6ff;--muted-ink:#9eb5c9;
-  --text:#edf6ff;--muted:#9eb5c9;
-}
-body{background:radial-gradient(ellipse at 50% -18%,#1d4261 0,#101d2d 50%,#091321 100%);color:#edf6ff}
-.panel,.auth{background:linear-gradient(145deg,#1c3046,#142235);border-color:#35516d;color:#edf6ff}
-h1,h2,h3,.screen-title{color:#e4f3ff}
-input,select{background:#102238;color:#edf6ff;border-color:#3c5c79}
-input::placeholder{color:#829bb2}
-button{background:linear-gradient(180deg,#9cecf4,#52bfd8);color:#102433;box-shadow:0 4px 12px #0004}
-button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline-color:#8ce7f4}
-button.alt,.leave-game-button{background:#263e57;color:#e5f3ff;border-color:#466580}
-button.warn{background:linear-gradient(180deg,#bd6874,#884653);color:#fff}
-.muted,th{color:#9eb5c9}
-.app-topbar,.game-header{background:#101f31e8;border-color:#ffffff18}
-.brand-mark strong,.game-title-lockup strong{color:#b9f3fb}
-.brand-mark small,.game-title-lockup small{color:#8baec4}
-.brand-card{background:#eaf7ff;color:#173b57;box-shadow:2px 3px 0 #4d91ad}
-.wallet-chip,.profile-chip{background:#243d57;color:#dff8ff;border-color:#42627e}
-.wallet-chip{background:#263a55;border-color:#53728f;color:#bcecf5}
-.profile-chip .avatar,.game-avatar{background:linear-gradient(145deg,#477d9c,#24445f);border-color:#82cfe0}
-.level-pill{border-color:#3d6982;background:linear-gradient(135deg,#254b65,#172f47)}
-.level-pill span,.level-pill strong{color:#a6eaf4}
-.level-pill small{color:#a3bbce}
-.play-hub,.home-section,.promo-card{background:linear-gradient(145deg,#1b3046,#142338);border-color:#ffffff18}
-.section-heading h2{color:#d9efff}
-.section-heading p,.welcome-row p{color:#9eb5c9}
-.quick-match-button{border-color:#a6edf4;background:radial-gradient(circle at 15% 20%,#b9f5f7 0,#68cddd 48%,#398eae 100%);color:#102b3d}
-.quick-match-button.searching{background:linear-gradient(110deg,#398eae,#9cecf4)}
-.quick-match-icon{background:#163c56;color:#b9f5f7}
-.quick-match-copy small{color:#31556a}
-.play-option-card,.table-list-row{background:#203951;border-color:#3b5b77;color:#edf6ff}
-.option-icon,.history-result-icon{background:#2d526d;color:#b8f0f6}
-.option-copy p,.empty-state{color:#a4bbce}
-.create-table-form input,.create-table-form select,.ai-controls select{background:#10263c;border-color:#3d6683;color:#edf6ff}
-.create-lobby-option .lobby-privacy-check,.rule-setting{background:#102238;border-color:#35516d;color:#c4d8e8}
-.create-lobby-option .lobby-privacy-check input[type=checkbox]{accent-color:#69d5ec}
-.table-list-row,.history-row{border-color:#ffffff16}
-.your-record{background:#25445d}
-.your-record span,.promo-card p{color:#b4c9d9}
-.your-record strong,.promo-sparkle,.eyebrow,.text-action{color:#8ce7f4}
-.promo-card{background:radial-gradient(circle at 90% 0,#326b86 0,transparent 48%),linear-gradient(145deg,#24445b,#172a40)}
-.app-bottom-nav{background:#0d1d2deF;border-color:#ffffff20}
-.app-bottom-nav button{color:#9eb5c9}
-.app-bottom-nav button.active{background:#294d68;color:#b9f2f7}
-.how-to-panel{background:#14263a;border-color:#ffffff18;color:#c6d8e8}
-.game-table-frame{background:linear-gradient(135deg,#315d79,#91dce9 22%,#234b69 75%,#75c5d6)}
-.game-table-felt{background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt2) 100%);box-shadow:inset 0 0 65px #001323a8,inset 0 0 0 5px #ffffff08}
-.game-player-card{background:#071e31c9;color:#edf6ff;border-color:#ffffff28}
-.game-player-card.turn{border-color:#8ce7f4;box-shadow:0 0 0 3px #69d5ec35,0 6px 18px #00132366}
-.game-status-banner{color:#d9f7ff}
-.game-status-banner span{background:#071e31c9}
-.pile-slot{color:#d9efff}
-.pile-slot small{color:#b4d0df}
-.pile-slot strong,.game-timer{color:#a8edf5}
-.rule-setting select{color:#edf6ff}
-.rule-toggle{background:#12273c;border-color:#46627b}
-.rule-toggle.is-on{border-color:#4bd3b3;background:linear-gradient(145deg,#12483f,#10343a);color:#b5ffeb}
-.rule-toggle.is-off{border-color:#db7886;background:linear-gradient(145deg,#452b3b,#2d2436);color:#ffd0d8}
-.replay-progress>div{background:#69d5ec}
-.replay-active{border-color:#8ce7f4;box-shadow:0 0 0 1px #8ce7f455}
-.replay-move.selected{outline-color:#8ce7f4;background:#294d68}
-@media(max-width:600px){
-  .app-bottom-nav{background:#0d1d2df2}
-}
+/* Graphite Ember — full interface palette */
+:root{--felt:#343a42;--felt2:#20252c;--gold:#ffad55;--panel:#202329;--line:#3d444e;--accent:#ff9b42;--surface:#292e35;--surface2:#353b44;--text:#f4f1eb;--muted:#aaa9a4;--table-pattern:radial-gradient(ellipse at center,#343a42,#20252c);--back-pattern:repeating-linear-gradient(45deg,#343a42,#343a42 6px,#ff9b42 6px,#ff9b42 8px,#292e35 8px,#292e35 14px)}
+body{background:radial-gradient(ellipse at 50% -18%,#343a42 0,#1c2026 48%,#111317 100%);color:#f4f1eb}
+h1,h2,h3,h4,.screen-title,.section-heading h2{color:#f4f1eb}.muted,th,.section-heading p,.welcome-row p{color:#aaa9a4}
+.panel,.auth,.home-section,.play-hub,.promo-card,.how-to-panel{background:linear-gradient(145deg,#292e35,#1d2025);border-color:#454c56;color:#f4f1eb}
+.auth{box-shadow:0 20px 60px #0008}
+input,select,textarea,.create-table-form input,.create-table-form select,.ai-controls select{background:#191c21;color:#f4f1eb;border-color:#454c56}
+input::placeholder,textarea::placeholder{color:#858991}input:focus,select:focus,textarea:focus{border-color:#ff9b42;outline-color:#ff9b42}
+button{background:linear-gradient(180deg,#ffad55,#e9822f);color:#211a14;border:1px solid #ffbd78;box-shadow:0 4px 12px #0005}
+button:hover{filter:brightness(1.08)}button.alt,.leave-game-button{background:linear-gradient(180deg,#424953,#30353d);color:#f4f1eb;border-color:#555e69}
+button.warn{background:linear-gradient(180deg,#b95d4f,#873d38);color:#fff;border-color:#d17b69}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #ffad55;outline-offset:2px}
+.bar,.app-topbar,.game-header{background:#191d23ef;border-color:#454c56}
+.brand-mark strong,.game-title-lockup strong{color:#ffbd78}.brand-mark small,.game-title-lockup small{color:#aaa9a4}
+.brand-card{background:#ffad55;color:#211a14;box-shadow:2px 3px 0 #9c572b}
+.wallet-chip,.profile-chip{background:#303740;color:#f4f1eb;border-color:#515b66}.wallet-chip{background:#383b3e;border-color:#8b6545;color:#ffc184}
+.profile-chip .avatar,.game-avatar,.avatar{background:linear-gradient(145deg,#666d76,#343a42);border-color:#a0a4a9}
+.level-pill{border-color:#79583e;background:linear-gradient(135deg,#51402f,#302b27)}.level-pill span,.level-pill strong,.your-record strong,.promo-sparkle,.eyebrow,.text-action{color:#ffad55}.level-pill small{color:#c1b5a8}
+.quick-match-button{border-color:#ffc184;background:radial-gradient(circle at 15% 20%,#ffd09b 0,#ffad55 48%,#d97832);color:#271b12}.quick-match-button.searching{background:linear-gradient(110deg,#d97832,#ffc184)}
+.quick-match-icon,.option-icon,.history-result-icon{background:#49382b;color:#ffc184}.quick-match-copy small{color:#76563e}
+.play-option-card,.table-list-row{background:#30363e;border-color:#4a515b;color:#f4f1eb}.option-copy p,.empty-state,.your-record span,.promo-card p{color:#c0beb8}
+.create-lobby-option .lobby-privacy-check,.rule-setting{background:#242930;border-color:#4a515b;color:#d5d1ca}.create-lobby-option .lobby-privacy-check input[type=checkbox]{accent-color:#ff9b42}
+.table-list-row,.history-row{border-color:#ffffff18}.your-record{background:#393b3d}.promo-card{background:radial-gradient(circle at 90% 0,#765037 0,transparent 48%),linear-gradient(145deg,#393b3e,#25292f)}
+.app-bottom-nav,.bottom-nav{background:#191d23ed;border-color:#555b63}.app-bottom-nav button,.bottom-nav button{color:#c1beb8}.app-bottom-nav button.active{background:#49382b;color:#ffc184}
+.table{background:var(--table-pattern);border-color:#6b6259}.game-table-frame{background:linear-gradient(135deg,#555c65,#ffad55 22%,#343a42 75%,#d17b39)}
+.game-table-felt{background:radial-gradient(ellipse at center,var(--felt),var(--felt2));box-shadow:inset 0 0 65px #080a0d,inset 0 0 0 5px #ffffff08}
+.opp,.game-player-card{background:linear-gradient(145deg,#242930ef,#191d23ef);color:#f4f1eb;border-color:#555b63}.opp.turn,.game-player-card.turn{border-color:#ffad55;outline-color:#ffad5540;box-shadow:0 0 18px #ff9b4230}.game-player-card.turn{background:linear-gradient(145deg,#51402f,#292a2b)}
+.game-avatar{background:linear-gradient(145deg,#6a7078,#343a42);border-color:#ffad5570}.game-player-details small,.own-player-copy small{color:#c1beb8}
+.game-status-banner{color:#f4d2ad}.game-status-banner span,.game-actions{background:#191d23d9;border-color:#ffffff20}.game-status-banner .bad{background:#482d2a;border-color:#b95d4f}
+.pile-slot{color:#f4f1eb}.pile-slot small,.game-log{color:#c1beb8}.pile-slot strong,.game-timer,.own-hand-count{color:#ffc184}
+.game-timer,.own-hand-count{background:#242930;border-color:#79583e}.game-header{background:linear-gradient(115deg,#292e35f2,#191d23f2);border-color:#ffffff20}
+.leave-game-button:hover{background:#4a4038;border-color:#ffad55}.your-hand-label{color:#ffbd78}
+.game-hand .card.sel{box-shadow:0 0 0 2px #ffad55,0 9px 18px #0008}.game-hand .card.legal{box-shadow:0 0 0 1px #ffad55,0 0 12px #ff9b4245}
+.own-player-bar{border-top-color:#ffffff20}.own-game-avatar{border-color:#ffad55;background:#4b4035}
+.rule-setting select{color:#f4f1eb}.rule-toggle{background:#292e35;border-color:#555e69;color:#e4e0d8}
+.rule-toggle.is-on{border-color:#e6a15c;background:linear-gradient(145deg,#51402f,#342b24);color:#ffd0a0}.rule-toggle.is-off{border-color:#7b7772;background:linear-gradient(145deg,#383a3e,#292c31);color:#c5c2bd}
+.replay-progress>div{background:#ff9b42}.replay-active{border-color:#ffad55;box-shadow:0 0 0 1px #ffad5555}.replay-move.selected{outline-color:#ffad55;background:#49382b}
+.xp-track,.challenge-track{background:#191d23;border-color:#454c56}.xp-fill,.challenge-track>div{background:linear-gradient(90deg,#e9822f,#ffc184)}
+.achievement-icon,.shop-item-icon{background:linear-gradient(135deg,#454b53,#292e35);color:#ffc184}.shop-item,.shop-preview{background:#191d23;border-color:#454c56}
+.shop-visual-card{background:var(--back-pattern);border-color:#ffad55}.shop-visual-felt{background:radial-gradient(ellipse at center,#454b53,#20252c);border-color:#ffad55}.shop-visual-frame{background:#292e35;border-color:#ffad55;color:#ffc184}
+.shop-option.selected,.appearance-option.selected,.shape-option.selected{border-color:#ffad55!important;box-shadow:0 0 0 1px #ffad55 inset}.swatch.active{outline-color:#ffad55}
+.shop-wallet{background:linear-gradient(110deg,#4b3829,#292e35);border-color:#9b6b43}.shop-wallet strong,.shop-wallet>div:last-child{color:#ffc184}
+.lobby-friend-picker{background:#191d23;border-color:#454c56}.lobby-online-friend{border-top-color:#ffffff18}
+.player-disconnect-notice{background:#242930;border-color:#555b63;color:#f4f1eb}.disconnect-status-dot{background:#ffad55;box-shadow:0 0 0 3px #ffad5522}.disconnect-countdown{color:#ffc184}
+.connection-banner{background:#242930;color:#f4d2ad;border-color:#ffad5566}.connection-banner .connection-dot{background:#ffad55;box-shadow:0 0 0 4px #ffad5522}
+.connection-banner.restored{color:#f4f1eb;border-color:#aaa9a466}.connection-banner.restored .connection-dot{background:#c1beb8;box-shadow:0 0 0 4px #c1beb822}
+.postgame-panel{background:linear-gradient(145deg,#30363e,#1d2025);border-color:#79583e}.postgame-title{color:#ffc184}
+.results-score-row{background:#ffffff08;border-color:#ffffff18}.results-score-row.results-winner{border-color:#ffad5588;background:linear-gradient(90deg,#ff9b421c,#ffffff05)}
+.results-place{color:#ffc184}.results-player strong,.results-rating strong{color:#f4f1eb}.results-player small,.results-rating small{color:#aaa9a4}.postgame-chat{border-top-color:#ffffff20}
+.season-player-summary{background:#242930;border-color:#ffffff18;color:#c1beb8}.season-player-summary strong{color:#ffc184}.season-archive{border-top-color:#ffffff20}
+.session-score-leader{background:#ff9b4214}.session-score-head,.session-score-row,.lobby-rules{border-color:#454c56}
+.shop-earn-note{background:#292e35;border-color:#454c56}.err,.neg,.banner .bad{color:#ff9a91}.pos,.ready-status.is-ready{color:#ffc184}
+#toast{background:#9d4b3e;color:#fff}.overlay{background:#080a0dcc}
+.list>div,td,th,.achievement,.challenge{border-color:#454c56}.banner span,#chat{background:#191d23;color:#f4f1eb}#chat b{color:#ffc184}
+.mini i,.card.back{background:var(--back-pattern);border-color:#ffad55}
+@media(max-width:600px){.app-bottom-nav{background:#191d23f2}}
 
 </style>
 </head>

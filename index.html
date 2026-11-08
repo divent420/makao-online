@@ -812,7 +812,7 @@ function rulesPanel(r, isHost) {
   const head = h('div', { class: 'row', style: 'justify-content:space-between; margin-bottom:10px' },
     h('h2', { style: 'margin:0' }, 'Rules'),
     h('span', { class: r.ranked ? 'pos' : 'muted', style: 'font-size:12px' },
-      r.ranked ? '🏆 Ranked · Standard' : 'Casual · Custom rules'));
+      r.ranked ? '🏆 Ranked · Quick Match' : 'Casual · Lobby rules'));
   const ruleIcons = {
     draw2:'2️⃣', draw3:'3️⃣', kings:'👑', stackPenalties:'📚',
     four:'⏭️', jack:'🃏', ace:'♠️', queenWild:'👸',
@@ -1197,7 +1197,7 @@ function roomScreen() {
         h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
       r.result&&!r.aiGame&&!r.tournament&&!r.members.some(m=>m.bot)?h('div',{class:'muted postgame-votes'},(r.rematchVotes||[]).length+' / '+r.members.length+' players want a rematch'):null,
       friendPicker,
-      rulesPanel(r, isHost&&!r.result)),
+      rulesPanel(r, isHost&&!r.quickMatch)),
     h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r))));
 
   mount(h('div', { class: 'wrap' }, nodes));

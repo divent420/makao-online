@@ -404,7 +404,7 @@ table td,table th{border-color:#ffffff18}
 .shop-option-button:disabled{opacity:.85;cursor:default}
 
 /* Sharp playing cards everywhere; compact, denser appearance catalog. */
-.card,.shop-visual-card{border-radius:0!important}
+.shop-visual-card{border-radius:0!important}
 .shop-option{grid-template-columns:34px minmax(0,1fr)!important;gap:6px!important;padding:6px!important;min-height:58px!important}
 .shop-visual{width:34px;height:45px}
 .shop-visual-felt,.shop-visual-frame{height:34px}
@@ -419,6 +419,11 @@ table td,table th{border-color:#ffffff18}
 @media(max-width:900px){.shop-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:600px){.shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.shop-option{grid-template-columns:30px minmax(0,1fr)!important}.shop-visual{width:30px;height:40px}}
 
+
+/* Card radius slider must override all legacy sharp-card declarations, including preview. */
+.card,.shop-preview .card{border-radius:var(--card-radius,0px)!important}
+.shop-visual-frame{display:grid;place-items:center;border-radius:50%!important;font-size:22px;overflow:visible}
+.shop-visual-frame span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font-size:19px;text-shadow:0 1px 4px #000}
 
 /* Standard playing-card indices: keep rank/suit in the corners, clear central pip. */
 .card{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:0!important;overflow:hidden}
@@ -968,7 +973,7 @@ function shopScreen() {
       ? h('div',{class:'shop-visual shop-visual-card '+(item.free?'':'premium'),style:item.style||(!item.free?('background:'+backPreview[item.effect]+';'):'')},'')
       : category==='table_theme'
         ? h('div',{class:'shop-visual shop-visual-felt',style:item.style||(!item.free?('background:'+feltPreview[item.effect]+';'):'')},'')
-        : h('div',{class:'shop-visual shop-visual-frame'},'');
+        : (()=>{const colors={flame:'#ff784e',ice:'#8bdcff',crown:'#f4cf68',neon:'#b66cff',emerald:'#43d69a',solar:'#ffc04d',void:'#9b83ff',crimson:'#ef5264',royalblue:'#4d9dff',rose:'#e7a0a2'};const color=colors[item.effect]||'#d6ad4e';return h('div',{class:'shop-visual shop-visual-frame',style:'border:3px solid '+color+';box-shadow:0 0 0 2px '+color+'55,0 0 12px '+color+'66;background:#172f25;color:#fff'},h('span',{},'🂡'));})();
     const selected=item.free?(freeAppearance[category]!==false && item.selected):(freeAppearance[category]===false && item.equipped);
     const action=item.free?item.apply:async()=>{
       let r;

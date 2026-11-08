@@ -535,6 +535,26 @@ table td,table th{border-color:#ffffff18}
 }
 @media(prefers-reduced-motion:reduce){.game-player-card,.game-hand .card,.leave-game-button{transition:none}}
 
+
+/* Card-play motion: hand deals, selection lift, turn handoff and draw feedback. */
+@keyframes makao-card-deal{0%{opacity:0;transform:translateY(28px) rotate(7deg) scale(.82);filter:brightness(1.5)}65%{opacity:1;transform:translateY(-5px) rotate(-1deg) scale(1.035)}100%{opacity:1;transform:translateY(0) rotate(0) scale(1);filter:none}}
+.game-hand .card.card-dealt{animation:makao-card-deal .48s cubic-bezier(.2,.8,.25,1) both}
+.game-hand .card:nth-child(2).card-dealt{animation-delay:35ms}.game-hand .card:nth-child(3).card-dealt{animation-delay:70ms}.game-hand .card:nth-child(4).card-dealt{animation-delay:105ms}.game-hand .card:nth-child(5).card-dealt{animation-delay:140ms}
+@keyframes makao-turn-arrive{0%{transform:scale(.96);filter:brightness(1.35)}55%{transform:scale(1.025)}100%{transform:scale(1);filter:none}}
+.game-player-card.turn{animation:makao-turn-arrive .38s ease-out both}
+.game-player-card.turn:after{content:'';position:absolute;inset:-3px;border:1px solid #f0d47a66;border-radius:inherit;pointer-events:none;animation:turn-ring .85s ease-out both}
+.game-player-card.turn{position:relative}
+@keyframes turn-ring{0%{opacity:.8;transform:scale(.94)}100%{opacity:0;transform:scale(1.09)}}
+@keyframes makao-draw-bounce{0%,100%{transform:translateY(0)}35%{transform:translateY(-7px) rotate(-2deg)}70%{transform:translateY(1px) rotate(1deg)}}
+.pile-slot:has(.card.back:active) .card.back{animation:makao-draw-bounce .28s ease}
+.game-actions button{transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}
+.game-actions button:active{transform:translateY(1px) scale(.97);filter:brightness(1.15)}
+.game-hand .card{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease,filter .18s ease}
+.game-hand .card.sel{transform:translateY(-13px) scale(1.035);filter:brightness(1.08)}
+.discard-history .card{animation:makao-history-slide .3s ease-out both}
+@keyframes makao-history-slide{from{opacity:.35;transform:translateX(9px) scale(.94)}to{opacity:.98;transform:translateX(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.game-hand .card.card-dealt,.game-player-card.turn,.game-player-card.turn:after,.pile-slot:has(.card.back:active) .card.back,.discard-history .card{animation:none!important}.game-hand .card,.game-actions button{transition:none!important}}
+
 </style>
 </head>
 <body>
@@ -558,6 +578,8 @@ let localReady = false, localTurnId = null;
 let choose = null;          // pending Jack/Ace choice: { kind, cards }
 let sayMakao = false;
 let moveFlashUntil = 0;
+let handArrivalCards = new Set();
+let handArrivalUntil = 0;
 let authErr = '';
 let activeScreen = 'home';
 let profileAvatar = null;
@@ -756,6 +778,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'state') {
       const prevTurn = S && S.game ? S.game.myTurn : false;
+      const previousHandKeys = S && S.game ? new Set(S.game.hand.map(c => JSON.stringify(c))) : null;
       const previousTop = S && S.game ? S.game.top : null;
       const previousLog = S && S.game && S.game.log ? S.game.log[S.game.log.length-1] : null;
       const previousRoom = S && S.room ? S.room : null;
@@ -773,6 +796,10 @@ function connect() {
       const nextTop = m.game ? m.game.top : null;
       const nextLog = m.game && m.game.log ? m.game.log[m.game.log.length-1] : null;
       if (m.game && (nextTop !== previousTop || (nextLog && nextLog !== previousLog))) moveFlashUntil = Date.now() + 950;
+      if (m.game && previousHandKeys) {
+        handArrivalCards = new Set(m.game.hand.filter(c => !previousHandKeys.has(JSON.stringify(c))).map(c => JSON.stringify(c)));
+        if (handArrivalCards.size) handArrivalUntil = Date.now() + 650;
+      } else { handArrivalCards = new Set(); handArrivalUntil = 0; }
       if (m.room?.localGame && m.game) { const active=m.game.players.find(p=>p.turn)?.id ?? null; if(active!==localTurnId){localTurnId=active;localReady=false;sel=[];choose=null;sayMakao=false;} } else {localTurnId=null;localReady=false;}
       if (leftTable) loadGameHistory(true);
       if (activeScreen === 'shop' && !shopLoading) loadShop();
@@ -1358,8 +1385,8 @@ function gameScreen() {
     h('div', { class: 'pile-slot discard-slot' }, discardDisplay, h('small', {}, 'DISCARD'), h('strong', {}, 'Suit '+SYM[g.suit])));
 
   const hand = h('div', { class: 'hand game-hand' });
-  g.hand.forEach((c) => hand.append(cardEl(c, {
-    cls: (sel.includes(c) ? 'sel ' : '') + (g.myTurn ? (g.legal.includes(c) ? 'legal' : 'dim') : ''),
+  g.hand.forEach((c, i) => hand.append(cardEl(c, {
+    cls: (sel.includes(c) ? 'sel ' : '') + (g.myTurn ? (g.legal.includes(c) ? 'legal' : 'dim') : '') + (Date.now() < handArrivalUntil && handArrivalCards.has(JSON.stringify(c)) ? ' card-dealt' : ''),
     onclick: () => { if (!finished) clickCard(c); },
   })));
 

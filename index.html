@@ -471,7 +471,6 @@ const app = $('app');
 let token = localStorage.getItem('mk_token');
 let S = null;               // latest server state
 let es = null;
-let board = [];             // all-time leaderboard rows
 let seasonData = null, seasonLoading = false;
 let gameHistoryData = null, gameHistoryLoading = false, gameHistoryLoadedAt = 0;
 let replayData = null, replayStep = 0, replayTimer = null;
@@ -687,11 +686,6 @@ function connect() {
     if (r.status === 401) { localStorage.removeItem('mk_token'); token = null; S = null; es.close(); render(); }
   };
 }
-async function loadBoard() {
-  const r = await api('/api/leaderboard');
-  board = r.rows || [];
-  if (S && !S.room) render();
-}
 async function loadSeason() {
   if (seasonLoading) return;
   seasonLoading=true;
@@ -900,9 +894,6 @@ function lobbyScreen() {
   const tbl = h('table', {}, h('tr', {}, h('th', {}, '#'), h('th', {}, 'Player'), h('th', {}, 'Rank'), h('th', {}, 'W / G')));
   (seasonData?.leaderboard||[]).slice(0,8).forEach(r=>tbl.append(h('tr',{class:r.id===S.me.id?'me':''},h('td',{},r.rank),h('td',{},h('button',{class:'alt player-link',style:'padding:5px 8px;background:transparent;box-shadow:none;text-align:left',onclick:()=>openPlayerProfile(r.id)},(r.avatar||'🂡')+' '+r.displayName)),h('td',{},r.tier.icon+' '+r.tier.name),h('td',{},r.wins+' / '+r.games))));
   if (!(seasonData?.leaderboard||[]).length) tbl.append(h('tr',{},h('td',{colspan:4,class:'muted'},'Play ranked matches to appear here')));
-  board.slice(0, 8).forEach((r, i) => tbl.append(h('tr', { class: r.username === S.me.username ? 'me' : '' },
-    h('td', {}, i + 1), h('td', {}, h('button', { class:'alt player-link', style:'padding:5px 8px;background:transparent;box-shadow:none;text-align:left', onclick:()=>openPlayerProfile(r.id) }, (r.avatar||'🂡')+' '+(r.display_name||r.username))),
-    h('td', {}, r.rating), h('td', {}, r.wins + ' / ' + r.games))));
 
   const historyPanel=h('section',{class:'game-history-panel home-section'},
     h('div',{class:'section-heading'},h('div',{},h('h2',{},'Recent games'),h('p',{},'Pick up where you left off')),h('button',{class:'text-action',onclick:()=>loadGameHistory(true)},'Refresh ↻')));
@@ -1302,7 +1293,7 @@ function render() {
 
 render();
 if (token) connect();
-loadBoard(); loadSeason(); setInterval(() => { if (token && S && !S.room) { loadBoard(); if(activeScreen==='home')loadSeason(); } if (token && activeScreen === 'social' && !socialLoading) loadSocial(); }, 15000);
+loadSeason(); setInterval(() => { if (token && S && !S.room) { if(activeScreen==='home')loadSeason(); } if (token && activeScreen === 'social' && !socialLoading) loadSocial(); }, 15000);
 </script>
 </body>
 </html>

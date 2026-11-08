@@ -744,10 +744,13 @@ const server = http.createServer((req, res) => {
         const roomId = userRoom.get(admin.id);
         const room = roomId ? rooms.get(roomId) : null;
         if (!room || !room.game || room.game.winner != null) return send(res, 409, { error: 'You must be in an active game to finish it' });
-        const winnerIndex = room.game.players.findIndex(player => player.id === admin.id);
-        if (winnerIndex < 0) return send(res, 403, { error: 'You must be a player in this game' });
+        const adminIndex = room.game.players.findIndex(player => player.id === admin.id);
+        if (adminIndex < 0) return send(res, 403, { error: 'You must be a player in this game' });
+        const outcome = m.outcome === 'lose' ? 'lose' : 'win';
+        const winnerIndex = outcome === 'lose' ? room.game.players.findIndex((player,index)=>index !== adminIndex) : adminIndex;
+        if (winnerIndex < 0) return send(res, 409, { error: 'There is no opponent to record as the winner' });
         room.game.winner = winnerIndex;
-        room.game.log = [...(room.game.log || []), 'Administrator testing: game ended early — ' + room.game.players[winnerIndex].name + ' wins.'];
+        room.game.log = [...(room.game.log || []), 'Administrator testing: game ended early — ' + room.game.players[winnerIndex].name + ' wins (' + outcome + ' test).'];
         try {
           afterAction(room);
           return send(res, 200, { ok: true });

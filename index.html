@@ -1264,7 +1264,7 @@ function gameScreen() {
         h('span',{class:'disconnect-status-dot'}),
         h('div',{class:'disconnect-notice-copy'},
           h('strong',{},'Waiting for player to reconnect'),
-          h('span',{},disconnectedPlayers.map(m=>m.displayName||m.username).join(', '))))
+          ...disconnectedPlayers.map(m=>h('span',{class:'disconnect-countdown','data-deadline':m.disconnectDeadline||0},(m.displayName||m.username)+' · reconnect grace active'))))
     : null;
   const finished = g.winner != null;
   const pend = g.pending, dem = g.demand;
@@ -1344,6 +1344,7 @@ function gameScreen() {
   if(local){const timerEl=$('timer');if(timerEl)timerEl.style.display='none';}else tick();
 }
 function tick() {
+  document.querySelectorAll('.disconnect-countdown').forEach(el=>{const deadline=Number(el.dataset.deadline)||0;const seconds=deadline?Math.max(0,Math.ceil((deadline-Date.now())/1000)):60;el.textContent=el.textContent.split(' · ')[0]+' · '+seconds+'s to reconnect';});
   const t = $('timer');
   if (S?.room?.localGame) { if(t) t.textContent='Local game · no timer'; return; }
   if (!t || !S || !S.game || S.game.winner != null) { if(t) t.textContent='Game finished'; return; }

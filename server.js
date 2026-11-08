@@ -147,7 +147,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, bots: room.bots || [], readyPlayers: room.readyPlayers || [], readyCheckStarted: !!room.readyCheckStarted, localGame: !!room.localGame, quickMatch: !!room.quickMatch, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, disconnectDeadlines: room.disconnectDeadlines || {}, bots: room.bots || [], readyPlayers: room.readyPlayers || [], readyCheckStarted: !!room.readyCheckStarted, localGame: !!room.localGame, quickMatch: !!room.quickMatch, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     sessionScores: room.sessionScores || {}, sessionGameIds: room.sessionGameIds || [],
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
@@ -170,7 +170,7 @@ function roomView(r) {
     id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, quickMatch: !!r.quickMatch, readinessEnabled: !r.quickMatch && !r.aiGame && !r.localGame && !r.tournamentId, readyCheckStarted: !!r.readyCheckStarted, readyCount: (r.readyPlayers || []).length + (r.bots || []).length, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !!r.quickMatch,
     sessionScores: Object.values(r.sessionScores || {}).sort((a,b) => b.points-a.points || b.wins-a.wins || a.name.localeCompare(b.name)),
-    members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), bot: false, ready: (r.readyPlayers || []).includes(id) }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true, ready:true }))],
+    members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), disconnectDeadline: Number(r.disconnectDeadlines?.[id]) || null, bot: false, ready: (r.readyPlayers || []).includes(id) }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true, ready:true }))],
     chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
   };
 }
@@ -242,6 +242,20 @@ function armTimer(room, restoring = false) {
   const current = room.game.players[room.game.turn];
   const isBot = current && current.id < 0;
   const now = Date.now();
+  // A disconnected player's turn is paused for their reconnect grace period.
+  // They forfeit only when the shared disconnect deadline expires.
+  if (!isBot && current && !online.has(current.id)) {
+    const graceDeadline = Number(room.disconnectDeadlines?.[current.id]) || (now + GAME_GRACE_MS);
+    room.disconnectDeadlines = room.disconnectDeadlines || {};
+    room.disconnectDeadlines[current.id] = graceDeadline;
+    room.game.deadline = graceDeadline;
+    room.timer = setTimeout(() => {
+      if (room.game && room.game.players[room.game.turn]?.id === current.id && !online.has(current.id)) leaveRoom(current.id);
+      else if (room.game) armTimer(room);
+    }, Math.max(0, graceDeadline - now));
+    persistRoom(room);
+    return;
+  }
   const savedDeadline = Number(room.game.deadline);
   const ms = isBot ? 900 : (restoring && Number.isFinite(savedDeadline)
     ? Math.max(0, savedDeadline - now)
@@ -273,7 +287,7 @@ function restoreRooms() {
       const room = {
         id: saved.id, name: str(saved.name, 30), host: saved.members.includes(saved.host) ? saved.host : saved.members[0],
         max: Math.min(4, Math.max(2, Number(saved.max) || 4)),
-        members: saved.members, bots: Array.isArray(saved.bots) ? saved.bots.filter(b => b && Number(b.id) < 0).slice(0, 4) : [], game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
+        members: saved.members, disconnectDeadlines: saved.disconnectDeadlines && typeof saved.disconnectDeadlines === 'object' ? { ...saved.disconnectDeadlines } : {}, bots: Array.isArray(saved.bots) ? saved.bots.filter(b => b && Number(b.id) < 0).slice(0, 4) : [], game: saved.game || null, gameHistory: Array.isArray(saved.gameHistory) ? saved.gameHistory : (saved.game ? [structuredClone(saved.game)] : []),
         sessionScores: saved.sessionScores && typeof saved.sessionScores === 'object' ? saved.sessionScores : {}, sessionGameIds: Array.isArray(saved.sessionGameIds) ? saved.sessionGameIds : [],
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
@@ -285,7 +299,10 @@ function restoreRooms() {
       rooms.set(room.id, room);
       for (const id of room.members) {
         userRoom.set(id, room.id);
-        dcTimers.set(id, setTimeout(() => { if (!online.has(id)) leaveRoom(id); }, room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS));
+        const grace = room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS;
+        const deadline = Number(room.disconnectDeadlines[id]) || (Date.now() + grace);
+        room.disconnectDeadlines[id] = deadline;
+        dcTimers.set(id, setTimeout(() => { if (!online.has(id)) leaveRoom(id); }, Math.max(0, deadline - Date.now())));
       }
       if (room.game && room.game.winner == null && !room.localGame) armTimer(room, true);
       else persistRoom(room);
@@ -385,6 +402,7 @@ function leaveRoom(uid) {
   dcTimers.delete(uid);
   const room = rooms.get(userRoom.get(uid));
   if (!room) return;
+  if (room.disconnectDeadlines) delete room.disconnectDeadlines[uid];
   if (room.game) M.forfeit(room.game, uid);
   room.members = room.members.filter((id) => id !== uid);
   room.readyPlayers = (room.readyPlayers || []).filter(id => id !== uid);
@@ -509,7 +527,7 @@ function handleAct(user, m) {
       rooms.set(id, {
         id, name: str(m.name, 30).trim() || user.username + "'s table",
         host: uid, max: Math.min(4, Math.max(2, m.max | 0 || 4)),
-        members: [uid], bots: [], readyPlayers: [], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
+        members: [uid], disconnectDeadlines: {}, bots: [], readyPlayers: [], game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null,
         rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 }, aiGame: false, aiDifficulty: 'normal',
       });
       userRoom.set(uid, id);
@@ -989,6 +1007,10 @@ const server = http.createServer((req, res) => {
     online.set(user.id, { res });
     clearTimeout(dcTimers.get(user.id));
     dcTimers.delete(user.id);
+    const reconnectedRoom = rooms.get(userRoom.get(user.id));
+    const wasDisconnected = !!(reconnectedRoom?.disconnectDeadlines && reconnectedRoom.disconnectDeadlines[user.id]);
+    if (reconnectedRoom?.disconnectDeadlines) delete reconnectedRoom.disconnectDeadlines[user.id];
+    if (wasDisconnected && reconnectedRoom?.game && reconnectedRoom.game.players[reconnectedRoom.game.turn]?.id === user.id) armTimer(reconnectedRoom);
     res.write('data: ' + JSON.stringify(stateFor(user.id)) + '\n\n');
     pushAll();
     const beat = setInterval(() => res.write(': hb\n\n'), 20000);
@@ -999,8 +1021,12 @@ const server = http.createServer((req, res) => {
       online.delete(user.id);
       const room = rooms.get(userRoom.get(user.id));
       if (room) {
-        dcTimers.set(user.id, setTimeout(() => { if (!online.has(user.id)) leaveRoom(user.id); },
-          room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS));
+        room.disconnectDeadlines = room.disconnectDeadlines || {};
+        const grace = room.game ? GAME_GRACE_MS : LOBBY_GRACE_MS;
+        room.disconnectDeadlines[user.id] = Date.now() + grace;
+        dcTimers.set(user.id, setTimeout(() => { if (!online.has(user.id)) leaveRoom(user.id); }, grace));
+        if (room.game && room.game.players[room.game.turn]?.id === user.id) armTimer(room);
+        else persistRoom(room);
       }
       pushAll();
     });

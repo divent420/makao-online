@@ -31,6 +31,12 @@ function initialize(db) {
     );
     CREATE INDEX IF NOT EXISTS idx_ranked_season_standings
       ON ranked_season_players(season_key,rating DESC,wins DESC,games ASC);
+    CREATE TABLE IF NOT EXISTS ranked_season_rewards(
+      season_key TEXT NOT NULL REFERENCES ranked_seasons(season_key) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      place INTEGER NOT NULL, coins INTEGER NOT NULL, awarded_at INTEGER NOT NULL,
+      PRIMARY KEY(season_key,user_id), UNIQUE(season_key,place)
+    );
   `);
 }
 function ensureCurrent(db,now=Date.now()) {
@@ -38,6 +44,20 @@ function ensureCurrent(db,now=Date.now()) {
   const starts=Date.UTC(year,month-1,1), ends=Date.UTC(year,month,1);
   db.prepare('INSERT OR IGNORE INTO ranked_seasons(season_key,title,starts_at,ends_at,created_at) VALUES(?,?,?,?,?)')
     .run(key,'Season '+key,starts,ends,now);
+  // Award the previous season podium exactly once when a new month begins.
+  const closed=db.prepare('SELECT season_key FROM ranked_seasons WHERE season_key<? ORDER BY season_key').all(key);
+  const prizes=[1000,600,300];
+  for(const old of closed){
+    const podium=db.prepare('SELECT user_id FROM ranked_season_players WHERE season_key=? AND games>0 ORDER BY rating DESC,wins DESC,games ASC LIMIT 3').all(old.season_key);
+    podium.forEach((p,i)=>{
+      const coins=prizes[i];
+      const added=db.prepare('INSERT OR IGNORE INTO ranked_season_rewards(season_key,user_id,place,coins,awarded_at) VALUES(?,?,?,?,?)').run(old.season_key,p.user_id,i+1,coins,now);
+      if(Number(added.changes)>0){
+        db.prepare('INSERT OR IGNORE INTO shop_wallets(user_id,coins,updated) VALUES(?,1000,?)').run(p.user_id,now);
+        db.prepare('UPDATE shop_wallets SET coins=coins+?,updated=? WHERE user_id=?').run(coins,now,p.user_id);
+      }
+    });
+  }
   return db.prepare('SELECT * FROM ranked_seasons WHERE season_key=?').get(key);
 }
 function recordRankedGame(db,players,winnerIndex,eloFn,now=Date.now()) {
@@ -61,13 +81,14 @@ function getSeasonData(db,userId,now=Date.now()) {
   const current=ensureCurrent(db,now);
   const rows=db.prepare(`SELECT p.user_id AS id,u.username,u.display_name,u.avatar,p.rating,p.games,p.wins
     FROM ranked_season_players p JOIN users u ON u.id=p.user_id
-    WHERE p.season_key=? AND p.games>0 ORDER BY p.rating DESC,p.wins DESC,p.games ASC LIMIT 50`).all(current.season_key);
+    WHERE p.season_key=? AND p.games>0 ORDER BY p.rating DESC,p.wins DESC,p.games ASC`).all(current.season_key);
   const ranked=rows.map((r,i)=>({...r,rank:i+1,tier:tierFor(r.rating),displayName:r.display_name||r.username,avatar:r.avatar||'🂡'}));
   const me=db.prepare('SELECT rating,games,wins FROM ranked_season_players WHERE season_key=? AND user_id=?').get(current.season_key,userId);
   const previous=db.prepare('SELECT season_key,title,starts_at,ends_at FROM ranked_seasons WHERE season_key<? ORDER BY season_key DESC LIMIT 6').all(current.season_key).map(s=>{
-    const podium=db.prepare(`SELECT u.username,u.display_name,u.avatar,p.rating,p.wins FROM ranked_season_players p JOIN users u ON u.id=p.user_id
+    const podium=db.prepare(`SELECT u.username,u.display_name,u.avatar,p.rating,p.wins,r.coins AS rewardCoins FROM ranked_season_players p JOIN users u ON u.id=p.user_id
+      LEFT JOIN ranked_season_rewards r ON r.season_key=p.season_key AND r.user_id=p.user_id
       WHERE p.season_key=? AND p.games>0 ORDER BY p.rating DESC,p.wins DESC,p.games ASC LIMIT 3`).all(s.season_key)
-      .map((p,i)=>({...p,place:i+1,displayName:p.display_name||p.username,avatar:p.avatar||'🂡',tier:tierFor(p.rating)}));
+      .map((p,i)=>({...p,place:i+1,displayName:p.display_name||p.username,avatar:p.avatar||'🂡',tier:tierFor(p.rating),rewardCoins:p.rewardCoins||[1000,600,300][i]}));
     return {...s,podium};
   });
   const myRank=ranked.find(r=>r.id===userId)?.rank||null;

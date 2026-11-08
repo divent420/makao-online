@@ -714,6 +714,25 @@ const server = http.createServer((req, res) => {
     const admin = userByToken(req.headers['x-token']);
     if (!admin) return send(res, 401, { error: 'Not signed in' });
     if (!admin.is_admin) return send(res, 403, { error: 'Administrator access required' });
+    if (req.method === 'POST' && url.pathname === '/api/admin/finish-game') {
+      return readBody(req, (m) => {
+        if (!m) return send(res, 400, { error: 'Bad request' });
+        const roomId = userRoom.get(admin.id);
+        const room = roomId ? rooms.get(roomId) : null;
+        if (!room || !room.game || room.game.winner != null) return send(res, 409, { error: 'You must be in an active game to finish it' });
+        const winnerIndex = room.game.players.findIndex(player => player.id === admin.id);
+        if (winnerIndex < 0) return send(res, 403, { error: 'You must be a player in this game' });
+        room.game.winner = winnerIndex;
+        room.game.log = [...(room.game.log || []), 'Administrator testing: game ended early — ' + room.game.players[winnerIndex].name + ' wins.'];
+        try {
+          afterAction(room);
+          return send(res, 200, { ok: true });
+        } catch (error) {
+          console.error('Admin forced game finish failed:', error);
+          return send(res, 500, { error: 'Could not finish and save this game' });
+        }
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/api/admin/users') {
       const users = db.prepare(`SELECT u.id,u.username,u.display_name,u.rating,u.games,u.wins,u.created,u.is_admin,COALESCE(w.coins,0) AS coins
         FROM users u LEFT JOIN shop_wallets w ON w.user_id=u.id ORDER BY u.created ASC LIMIT 500`).all();

@@ -92,8 +92,12 @@ function grantCoins(db, userId, amount, adminId, reason = '', now = Date.now()) 
   return { ok: true, coins: getShop(db, userId, now).coins };
 }
 
-function getShop(db, userId, now = Date.now()) {
+function getShop(db, userId, now = Date.now(), isAdmin = false) {
   ensureWallet(db, userId, now);
+  if (isAdmin) {
+    const grant = db.prepare('INSERT OR IGNORE INTO user_cosmetics(user_id,cosmetic_id,purchased_at) VALUES(?,?,?)');
+    for (const item of CATALOG) grant.run(userId, item.id, now);
+  }
   const wallet = db.prepare('SELECT coins FROM shop_wallets WHERE user_id=?').get(userId);
   const ownedRows = db.prepare('SELECT cosmetic_id FROM user_cosmetics WHERE user_id=?').all(userId);
   const equippedRows = db.prepare('SELECT category,cosmetic_id FROM user_equipped_cosmetics WHERE user_id=?').all(userId);
@@ -128,9 +132,10 @@ function buy(db, userId, cosmeticId, now = Date.now()) {
   return { ok: true, shop: getShop(db,userId,now) };
 }
 
-function equip(db, userId, cosmeticId, now = Date.now()) {
+function equip(db, userId, cosmeticId, now = Date.now(), isAdmin = false) {
   const item = CATALOG.find(x => x.id === String(cosmeticId || ''));
   if (!item) return { error: 'Cosmetic not found' };
+  if (isAdmin) db.prepare('INSERT OR IGNORE INTO user_cosmetics(user_id,cosmetic_id,purchased_at) VALUES(?,?,?)').run(userId,item.id,now);
   const owned = db.prepare('SELECT 1 AS ok FROM user_cosmetics WHERE user_id=? AND cosmetic_id=?').get(userId,item.id);
   if (!owned) return { error: 'You do not own this cosmetic' };
   db.prepare(`INSERT INTO user_equipped_cosmetics(user_id,category,cosmetic_id,equipped_at) VALUES(?,?,?,?)

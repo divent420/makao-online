@@ -941,7 +941,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/shop') {
     const user = userByToken(req.headers['x-token']);
     if (!user) return send(res, 401, { error: 'Not signed in' });
-    return send(res, 200, Shop.getShop(db, user.id));
+    return send(res, 200, Shop.getShop(db, user.id, Date.now(), !!user.is_admin));
   }
 
   if (req.method === 'POST' && url.pathname === '/api/shop/buy') {
@@ -959,7 +959,7 @@ const server = http.createServer((req, res) => {
     if (!user) return send(res, 401, { error: 'Not signed in' });
     return readBody(req, (m) => {
       if (!m) return send(res, 400, { error: 'Bad request' });
-      const result = Shop.equip(db,user.id,m.cosmeticId);
+      const result = Shop.equip(db,user.id,m.cosmeticId,Date.now(),!!user.is_admin);
       return result.error ? send(res, 400, result) : send(res, 200, result);
     });
   }

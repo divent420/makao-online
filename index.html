@@ -1288,7 +1288,7 @@ function roomScreen() {
   // rule settings and chat remain in their familiar positions.
   nodes.push(h('div', { class: 'grid' },
     h('div', { class: 'panel' },
-      h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
+      h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max + (r.privateOnly ? ' · 🔒 INVITE-ONLY' : ' · 🌐 PUBLIC')), members,
       h('div', { class: 'row lobby-controls', style: 'margin-top:12px;flex-wrap:wrap' },
         isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:()=>act({t:'addBot'})},'＋ Add bot'):null,
         isHost&&!r.result?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:async()=>{lobbyFriendPickerOpen=!lobbyFriendPickerOpen;if(lobbyFriendPickerOpen)await loadSocial();else render();}},'＋ Add friend'):null,

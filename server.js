@@ -427,6 +427,17 @@ function handleAct(user, m) {
       room.game = M.newGame(list, room.rules); room.gameStartedAt = Date.now(); beginGameHistory(room); room.lastGame = null; room.rematchVotes = []; room.result = null; persistRoom(room); armTimer(room); pushAll();
       return { ok: true };
     }
+    case 'rematchBots': {
+      if (!room || room.game || !room.result || room.aiGame || room.tournamentId || room.host !== uid || !(room.bots || []).length) return { error: 'Bot rematch is not available' };
+      const human = q.byId.get(uid);
+      const list = [{ id: uid, name: human.display_name || human.username }]
+        .concat((room.bots || []).map(b => ({ id:b.id, name:b.name })));
+      for (let i=list.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
+      room.game = M.newGame(list, room.rules); room.gameStartedAt = Date.now(); beginGameHistory(room);
+      room.lastGame = null; room.rematchVotes = []; room.result = null;
+      persistRoom(room); armTimer(room); pushAll();
+      return { ok:true, started:true };
+    }
     case 'rematch': {
       if (!room || room.game || !room.result || room.aiGame || room.tournamentId) return { error: 'A player rematch is not available' };
       if (room.members.length < 2) return { error: 'At least two players are required' };

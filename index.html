@@ -680,8 +680,19 @@ function connect() {
       const prevTurn = S && S.game ? S.game.myTurn : false;
       const previousTop = S && S.game ? S.game.top : null;
       const previousLog = S && S.game && S.game.log ? S.game.log[S.game.log.length-1] : null;
+      const previousRoom = S && S.room ? S.room : null;
+      const previousGameActive = !!(S && S.game && S.room && !S.room.localGame);
       const leftTable = !!(S && S.room && !m.room);
       S = m;
+      // Announce presence changes to everyone still connected to the same live game.
+      if (previousRoom && m.room && previousRoom.id === m.room.id && previousGameActive && m.game && !m.room.localGame) {
+        for (const member of m.room.members) {
+          const before = previousRoom.members.find(x => x.id === member.id);
+          if (!before || before.online === member.online) continue;
+          const name = member.displayName || member.username;
+          toast(member.online ? name + ' reconnected' : name + ' disconnected · waiting to reconnect');
+        }
+      }
       const nextTop = m.game ? m.game.top : null;
       const nextLog = m.game && m.game.log ? m.game.log[m.game.log.length-1] : null;
       if (m.game && (nextTop !== previousTop || (nextLog && nextLog !== previousLog))) moveFlashUntil = Date.now() + 950;

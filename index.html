@@ -458,7 +458,7 @@ table td,table th{border-color:#ffffff18}
 }
 
 .connection-banner{position:fixed;z-index:9999;top:12px;left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 28px));display:flex;align-items:center;gap:10px;padding:11px 15px;border:1px solid #d6a34a66;border-radius:10px;background:#17202df2;color:#f4e7c8;box-shadow:0 10px 32px #0009;font-size:13px;backdrop-filter:blur(12px)}.connection-banner .connection-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#e5a83d;box-shadow:0 0 0 4px #e5a83d22;animation:connectionPulse 1.2s infinite}.connection-banner.restored{border-color:#43c78a66;color:#d8ffea}.connection-banner.restored .connection-dot{background:#43c78a;box-shadow:0 0 0 4px #43c78a22;animation:none}@keyframes connectionPulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.connection-banner .connection-dot{animation:none}}
-</style>
+\n.player-disconnect-notice{display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:12px 14px;border:1px solid #e6a34a;background:linear-gradient(135deg,#4b3218,#302315);color:#ffe6b7;border-radius:10px;box-shadow:0 5px 18px #0005;font-size:13px;line-height:1.4}.player-disconnect-notice strong{font-size:14px;color:#ffd27d}.player-disconnect-notice span{overflow-wrap:anywhere}@media(max-width:600px){.player-disconnect-notice{position:relative;margin:0 0 9px;padding:13px 12px;font-size:13px}.player-disconnect-notice strong{font-size:14px}}\n</style>
 </head>
 <body>
 <div id="app"></div>
@@ -681,16 +681,15 @@ function connect() {
       const previousTop = S && S.game ? S.game.top : null;
       const previousLog = S && S.game && S.game.log ? S.game.log[S.game.log.length-1] : null;
       const previousRoom = S && S.room ? S.room : null;
-      const previousGameActive = !!(S && S.game && S.room && !S.room.localGame);
       const leftTable = !!(S && S.room && !m.room);
       S = m;
-      // Announce presence changes to everyone still connected to the same live game.
-      if (previousRoom && m.room && previousRoom.id === m.room.id && previousGameActive && m.game && !m.room.localGame) {
+      // Presence notifications are based on room membership, not game-view state.
+      if (previousRoom && m.room && previousRoom.id === m.room.id && !m.room.localGame) {
         for (const member of m.room.members) {
           const before = previousRoom.members.find(x => x.id === member.id);
           if (!before || before.online === member.online) continue;
           const name = member.displayName || member.username;
-          toast(member.online ? name + ' reconnected' : name + ' disconnected · waiting to reconnect');
+          toast(member.online ? name + ' reconnected' : name + ' disconnected · reconnect window: 60 seconds');
         }
       }
       const nextTop = m.game ? m.game.top : null;
@@ -1174,6 +1173,12 @@ function gameScreen() {
       mini));
   });
 
+  const disconnectedPlayers = (S.room.members || []).filter(m => m.id !== S.me.id && !m.online);
+  const disconnectNotice = disconnectedPlayers.length
+    ? h('div',{class:'player-disconnect-notice',role:'status','aria-live':'assertive'},
+        h('strong',{},'⚠ Player disconnected'),
+        h('span',{},disconnectedPlayers.map(m=>m.displayName||m.username).join(', ')+' · waiting for them to reconnect'))
+    : null;
   const finished = g.winner != null;
   const pend = g.pending, dem = g.demand;
   const banner = h('div', { class: 'game-status-banner' });
@@ -1231,6 +1236,7 @@ function gameScreen() {
     h('button',{class:'leave-game-button',onclick:()=>{if(confirm('Leave the game? This counts as a loss.'))act({t:'leaveRoom'});}},'Leave'));
   mount(h('div', { class: 'wrap app-shell game-screen' },
     titleBar,
+    disconnectNotice,
     h('div',{class:'game-table-frame'},
       h('div',{class:'game-table-felt'},opps,banner,center,
         h('div',{class:'game-log'},g.log.slice(-2).map(l=>h('div',{},l))),

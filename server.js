@@ -818,6 +818,29 @@ const server = http.createServer((req, res) => {
         }
       });
     }
+    if (req.method === 'GET' && url.pathname === '/api/admin/overview') {
+      const totals = db.prepare(`SELECT COUNT(*) AS players,
+        COALESCE(SUM(games),0) AS gamesPlayed,
+        COALESCE(SUM(wins),0) AS wins,
+        SUM(CASE WHEN created >= ? THEN 1 ELSE 0 END) AS newPlayers
+        FROM users`).get(Date.now() - 7 * 86400000);
+      const reportTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='player_reports'").get();
+      const openReports = reportTable ? (db.prepare("SELECT COUNT(*) AS count FROM player_reports WHERE status IN ('open','reviewing')").get().count || 0) : 0;
+      return send(res,200,{
+        players:totals.players||0,gamesPlayed:totals.gamesPlayed||0,wins:totals.wins||0,newPlayers:totals.newPlayers||0,
+        onlinePlayers:online.size,activeLobbies:rooms.size,
+        activeGames:[...rooms.values()].filter(room=>room.game&&room.game.winner==null).length,
+        openReports
+      });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/admin/active-rooms') {
+      return send(res,200,{rooms:[...rooms.values()].map(room=>({
+        id:room.id,name:room.name||'Untitled lobby',inGame:!!room.game&&room.game.winner==null,
+        players:(room.game?.players||room.players||[]).map(player=>({
+          username:player.name||player.username||'Player',connected:player.id<0||online.has(player.id)
+        }))
+      }))});
+    }
     if (req.method === 'GET' && url.pathname === '/api/admin/users') {
       const users = db.prepare(`SELECT u.id,u.username,u.display_name,u.rating,u.games,u.wins,u.created,u.is_admin,COALESCE(w.coins,0) AS coins
         FROM users u LEFT JOIN shop_wallets w ON w.user_id=u.id ORDER BY u.created ASC LIMIT 500`).all();

@@ -215,6 +215,11 @@
   .shop-preview .preview-hand .card{width:58px;height:84px;font-size:18px}
   .shop-preview .preview-hand .card .s{font-size:24px}
   .shop-preview .preview-pile small{font-size:10px}
+  .lobby-friend-picker{margin-top:12px;padding:12px;border:1px solid #ffffff20;border-radius:14px;background:#101925}
+  .lobby-online-friends{display:grid;gap:5px}
+  .lobby-online-friend{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid #ffffff12}
+  .lobby-online-friend .muted{font-size:11px}
+  .lobby-online-friend button{min-height:34px;padding:6px 12px}
   /* Lobby rules: compact icon toggles with hover labels and clear state colors. */
   .lobby-rules { margin-top:14px; border-top:1px solid var(--line); padding-top:14px; }
   .rule-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
@@ -495,6 +500,7 @@ let shopError = '';
 let socialData = null;
 let socialLoading = false;
 let socialError = '';
+let lobbyFriendPickerOpen = false;
 let tournamentData = null;
 let adminReports = [];
 let adminUsers = [];
@@ -581,7 +587,7 @@ async function loadSocial() {
     if (!cups.error) tournamentData = cups;
   } catch (_) { socialError = 'Could not connect to the server.'; }
   finally { socialLoading = false; }
-  if (activeScreen === 'social') render();
+  if (activeScreen === 'social' || (activeScreen === 'home' && S && S.room && !S.game)) render();
 }
 function showSocial() { activeScreen = 'social'; loadSocial(); render(); }
 async function openPlayerProfile(id) {
@@ -884,7 +890,6 @@ function socialScreen() {
     if(!socialData.friends.length) friends.append(h('div',{class:'muted'},'No friends yet. Add someone by username.'));
     socialData.friends.forEach(f=>{
       const actions=[h('button',{class:'alt',onclick:()=>openPlayerProfile(f.id)},'Profile')];
-      if(S.room && !S.game && S.room.host===S.me.id) actions.push(h('button',{onclick:async()=>{const r=await api('/api/rooms/invite',{userId:f.id});toast(r.error||'Invitation sent');}},'Invite to table'));
       actions.push(h('button',{class:'alt',onclick:async()=>{if(!confirm('Remove '+f.username+' from your friends?'))return;await api('/api/friends/remove',{userId:f.id});await loadSocial();}},'Remove'));
       friends.append(h('div',{class:'row',style:'justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)'},h('div',{class:'grow'},h('strong',{},(f.avatar||'🂡')+' '+f.displayName),h('div',{class:'muted'},(f.online?'🟢 Online':'⚫ Offline')+' · '+f.rating+' Elo')),h('div',{class:'row'},actions)));
     });
@@ -1117,6 +1122,18 @@ function roomScreen() {
       h('span', { class: 'muted' }, m.bot?'BOT':(' · '+m.rating+(m.online?'':' · offline'))),
       isHost&&!r.result&&!S.game&&m.bot?h('button',{class:'small-action remove-lobby-bot',onclick:()=>act({t:'removeBot',id:m.id})},'Remove'):null));
   });
+  if (isHost && !socialData && !socialLoading) loadSocial();
+  const onlineFriends = (socialData?.friends || []).filter(f => f.online && !r.members.some(m => Number(m.id) === Number(f.id)));
+  const friendPicker = lobbyFriendPickerOpen ? h('div',{class:'lobby-friend-picker'},
+    h('div',{class:'row',style:'justify-content:space-between;align-items:center;margin-bottom:8px'},
+      h('strong',{},'Online friends'),
+      h('button',{class:'alt',style:'padding:5px 9px;min-height:30px',onclick:()=>loadSocial()},'↻ Refresh')),
+    !socialData ? h('div',{class:'muted'},socialError||'Loading friends…') :
+      !onlineFriends.length ? h('div',{class:'muted'},'No friends are online right now.') :
+      h('div',{class:'lobby-online-friends'},...onlineFriends.map(f=>h('div',{class:'lobby-online-friend'},
+        h('div',{class:'grow'},h('strong',{},(f.avatar||'🂡')+' '+f.displayName),h('div',{class:'muted'},'🟢 Online · '+f.rating+' Elo')),
+        h('button',{disabled:r.members.length>=r.max,onclick:async()=>{const invite=await api('/api/rooms/invite',{userId:f.id});if(invite.error)return toast(invite.error);toast('Invitation sent to '+f.displayName);await loadSocial();}},'Invite'))))
+  ) : null;
   const nodes = [topBar()];
   if (r.result) {
     const rows = [...(r.result.rows || [])].sort((a,b)=>Number(b.won)-Number(a.won));
@@ -1142,8 +1159,10 @@ function roomScreen() {
         h('h2', {}, r.name + ' · ' + r.members.length + '/' + r.max), members,
         h('div', { class: 'row lobby-controls', style: 'margin-top:12px;flex-wrap:wrap' },
           isHost?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:()=>act({t:'addBot'})},'＋ Add bot'):null,
+          isHost?h('button',{class:'alt',disabled:r.members.length>=r.max,onclick:async()=>{lobbyFriendPickerOpen=!lobbyFriendPickerOpen;if(lobbyFriendPickerOpen)await loadSocial();else render();}},'＋ Add friend'):null,
           r.aiGame && r.result ? h('button', { onclick: () => act({ t: 'rematchAI' }) }, '🤖 Play again') : (isHost ? h('button', { disabled: r.members.length < 2, onclick: () => act({ t: 'start' }) }, 'Start game') : h('span', { class: 'muted' }, 'Waiting for the host to start…')),
           h('button', { class: 'alt', onclick: () => act({ t: 'leaveRoom' }) }, 'Leave table')),
+        friendPicker,
         rulesPanel(r, isHost)),
       h('div', { class: 'panel' }, h('h2', {}, 'Chat'), chatBox(r))));
   }

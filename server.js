@@ -147,7 +147,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, bots: room.bots || [], readyPlayers: room.readyPlayers || [], localGame: !!room.localGame, quickMatch: !!room.quickMatch, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, bots: room.bots || [], readyPlayers: room.readyPlayers || [], readyCheckStarted: !!room.readyCheckStarted, localGame: !!room.localGame, quickMatch: !!room.quickMatch, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     sessionScores: room.sessionScores || {}, sessionGameIds: room.sessionGameIds || [],
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
@@ -167,7 +167,7 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, quickMatch: !!r.quickMatch, readinessEnabled: !r.quickMatch && !r.aiGame && !r.localGame && !r.tournamentId, readyCount: (r.readyPlayers || []).length + (r.bots || []).length, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, quickMatch: !!r.quickMatch, readinessEnabled: !r.quickMatch && !r.aiGame && !r.localGame && !r.tournamentId, readyCheckStarted: !!r.readyCheckStarted, readyCount: (r.readyPlayers || []).length + (r.bots || []).length, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
     rules: r.rules, ranked: !!r.quickMatch,
     sessionScores: Object.values(r.sessionScores || {}).sort((a,b) => b.points-a.points || b.wins-a.wins || a.name.localeCompare(b.name)),
     members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), bot: false, ready: (r.readyPlayers || []).includes(id) }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true, ready:true }))],
@@ -277,7 +277,7 @@ function restoreRooms() {
         sessionScores: saved.sessionScores && typeof saved.sessionScores === 'object' ? saved.sessionScores : {}, sessionGameIds: Array.isArray(saved.sessionGameIds) ? saved.sessionGameIds : [],
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
-        result: saved.result || null, lastGame: saved.lastGame || null, readyPlayers: Array.isArray(saved.readyPlayers) ? saved.readyPlayers.filter(id => saved.members.includes(id)) : [], rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
+        result: saved.result || null, lastGame: saved.lastGame || null, readyPlayers: Array.isArray(saved.readyPlayers) ? saved.readyPlayers.filter(id => saved.members.includes(id)) : [], readyCheckStarted: !!saved.readyCheckStarted, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
         tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, localGame: !!saved.localGame, quickMatch: !!saved.quickMatch,
         rules: M.sanitizeRules(saved.rules),
       };
@@ -560,7 +560,7 @@ function handleAct(user, m) {
       const next = M.sanitizeRules(m.rules);
       if (JSON.stringify(next) !== JSON.stringify(room.rules)) {
         room.rules = next;
-        room.readyPlayers = [];
+        room.readyPlayers = []; room.readyCheckStarted = false;
         if (room.result) room.rematchVotes = [];
         const note = user.username + ' changed the rules';
         const last = room.chat[room.chat.length - 1];
@@ -571,7 +571,7 @@ function handleAct(user, m) {
       break;
     }
     case 'setReady': {
-      if (!room || room.game || room.result || room.quickMatch || room.aiGame || room.localGame || room.tournamentId) return { error: 'Ready status is not available right now' };
+      if (!room || room.game || (room.result && !room.readyCheckStarted) || room.quickMatch || room.aiGame || room.localGame || room.tournamentId) return { error: 'Ready status is not available right now' };
       if (!room.members.includes(uid)) return { error: 'You are not in this lobby' };
       room.readyPlayers = Array.isArray(room.readyPlayers) ? room.readyPlayers : [];
       const wasReady = room.readyPlayers.includes(uid);
@@ -588,7 +588,8 @@ function handleAct(user, m) {
       if (room.members.length + (room.bots || []).length < 2) return { error: 'Need at least 2 players or bots' };
       if (!room.quickMatch && !room.aiGame && !room.localGame && !room.tournamentId) {
         room.readyPlayers = Array.isArray(room.readyPlayers) ? room.readyPlayers : [];
-        // Pressing Start also readies the host; other humans must ready first.
+        room.readyCheckStarted = true;
+        // The host's Start / Play again click also marks them ready.
         if (!room.readyPlayers.includes(uid)) {
           room.readyPlayers.push(uid);
           room.chat.push({from:'Table',text:uname(uid)+' is ready',ts:Date.now()});
@@ -607,6 +608,7 @@ function handleAct(user, m) {
       room.game = M.newGame(list, room.rules);
       room.gameStartedAt = Date.now(); beginGameHistory(room);
       room.lastGame = null; room.rematchVotes = []; room.result = null;
+      room.readyPlayers = []; room.readyCheckStarted = false;
       armTimer(room);
       break;
     }

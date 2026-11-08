@@ -147,7 +147,7 @@ function persistRoom(room) {
   if (!room) return;
   const snapshot = {
     id: room.id, name: room.name, host: room.host, max: room.max,
-    members: room.members, bots: room.bots || [], localGame: !!room.localGame, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
+    members: room.members, bots: room.bots || [], localGame: !!room.localGame, quickMatch: !!room.quickMatch, game: room.game, gameHistory: room.gameHistory || [], gameStartedAt: room.gameStartedAt || Date.now(), lastGame: room.lastGame || null, rematchVotes: room.rematchVotes || [], chat: room.chat,
     sessionScores: room.sessionScores || {}, sessionGameIds: room.sessionGameIds || [],
     result: room.result, rules: room.rules, aiGame: !!room.aiGame, aiDifficulty: room.aiDifficulty || 'normal',
     tournamentId: room.tournamentId || null, tournamentMatchId: room.tournamentMatchId || null,
@@ -167,8 +167,8 @@ function deleteRoomSnapshot(roomId) {
 
 function roomView(r) {
   return {
-    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
-    rules: r.rules, ranked: !r.aiGame && !r.tournamentId && M.isRanked(r.rules),
+    id: r.id, name: r.name, host: r.host, max: r.max, localGame: !!r.localGame, quickMatch: !!r.quickMatch, playing: !!r.game || !!r.result, aiGame: !!r.aiGame, tournament: !!r.tournamentId,
+    rules: r.rules, ranked: !!r.quickMatch,
     sessionScores: Object.values(r.sessionScores || {}).sort((a,b) => b.points-a.points || b.wins-a.wins || a.name.localeCompare(b.name)),
     members: [...r.members.map((id) => { const u = q.byId.get(id); return { id, username: u.username, displayName: u.display_name || u.username, avatar: u.avatar || '🂡', rating: u.rating, online: online.has(id), bot: false }; }), ...(r.bots || []).map(b => ({ id:b.id, username:b.name, displayName:b.name, avatar:'🤖', rating:null, online:true, bot:true }))],
     chat: r.chat.slice(-40), result: r.result, rematchVotes: r.rematchVotes || [],
@@ -206,7 +206,7 @@ function stateFor(uid) {
     t: 'state', me: userView(u),
     lobbies: [...rooms.values()].map((r) => ({
       id: r.id, name: r.name, host: uname(r.host), count: r.members.length + (r.bots || []).length, max: r.max, playing: !!r.game || !!r.result,
-      ranked: !r.tournamentId && M.isRanked(r.rules),
+      ranked: !!r.quickMatch,
     })),
     room: room ? roomView(room) : null,
     matchmaking: matchmakingQueue.has(uid) ? { waiting: true, since: matchmakingQueue.get(uid) } : { waiting: false },
@@ -278,7 +278,7 @@ function restoreRooms() {
         gameStartedAt: Number(saved.gameStartedAt) || Date.now(),
         chat: Array.isArray(saved.chat) ? saved.chat.slice(-100) : [],
         result: saved.result || null, lastGame: saved.lastGame || null, rematchVotes: Array.isArray(saved.rematchVotes) ? saved.rematchVotes : [], timer: null, aiGame: !!saved.aiGame, aiDifficulty: saved.aiDifficulty || 'normal',
-        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, localGame: !!saved.localGame,
+        tournamentId: saved.tournamentId || null, tournamentMatchId: saved.tournamentMatchId || null, localGame: !!saved.localGame, quickMatch: !!saved.quickMatch,
         rules: M.sanitizeRules(saved.rules),
       };
       if (room.members.some((id) => userRoom.has(id))) throw new Error('Player appears in multiple rooms');
@@ -324,7 +324,7 @@ function finishGame(room) {
   recordSessionScore(room, st);
   const players = st.players;
   const humanRows = players.filter((p) => p.id > 0).map((p) => q.byId.get(p.id)).filter(Boolean);
-  const ranked = !room.aiGame && !room.localGame && !room.tournamentId && M.isRanked(room.rules);
+  const ranked = !!room.quickMatch && !room.aiGame && !room.localGame && !room.tournamentId;
   const deltas = ranked ? M.elo(humanRows.map((u) => u.rating), players.findIndex(p => p.id === players[st.winner].id)) : humanRows.map(() => 0);
   const playedAt = Date.now();
   const result = { id: playedAt, ranked, tournament: !!room.tournamentId, winner: st.players[st.winner].name, winnerId: st.players[st.winner].id, rows: [] };
@@ -439,7 +439,7 @@ function handleAct(user, m) {
         const id = crypto.randomBytes(4).toString('hex');
         const ids = [otherId, uid];
         const members = ids.map(id => q.byId.get(id)).filter(Boolean);
-        const r = { id, name: 'Quick Match', host: otherId, max: 2, members: ids,
+        const r = { id, name: 'Quick Match', host: otherId, max: 2, members: ids, quickMatch: true,
           game: null, lastGame: null, rematchVotes: [], chat: [], result: null, timer: null, aiGame: false, aiDifficulty: 'normal',
           rules: { ...M.DEFAULT_RULES, turnSeconds: TURN_MS / 1000 } };
         const list = members.map(u => ({ id: u.id, name: u.display_name || u.username }));
@@ -548,10 +548,12 @@ function handleAct(user, m) {
     }
     case 'setRules': {
       if (!room || room.host !== uid) return { error: 'Only the host can change the rules' };
+      if (room.quickMatch) return { error: 'Quick Match uses fixed ranked rules' };
       if (room.game) return { error: "Rules can't change during a game" };
       const next = M.sanitizeRules(m.rules);
       if (JSON.stringify(next) !== JSON.stringify(room.rules)) {
         room.rules = next;
+        if (room.result) room.rematchVotes = [];
         const note = user.username + ' changed the rules';
         const last = room.chat[room.chat.length - 1];
         if (last && last.from === 'Table' && last.text === note) last.ts = Date.now();
